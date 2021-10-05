@@ -5354,7 +5354,7 @@ mFileHandle(fp)
 	{
 		if (!aFilename)
 			return INVALID_PARAMETER;
-        mFileHandle = ImFileOpen(aFilename, "rb");
+        mFileHandle = (FILE*)ImFileOpen(aFilename, "rb");
 		if (!mFileHandle)
 			return FILE_NOT_FOUND;
 		return SO_NO_ERROR;

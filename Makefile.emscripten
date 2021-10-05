@@ -7,16 +7,16 @@
 # (On Windows, you may need to execute emsdk_env.bat or encmdprompt.bat ahead)
 #
 # Running `make` will produce three files:
-#  - example_emscripten.html
-#  - example_emscripten.js
-#  - example_emscripten.wasm
+#  - nightingale_emscripten.html
+#  - nightingale_emscripten.js
+#  - nightingale_emscripten.wasm
 #
-# All three are needed to run the demo.
+# All three are needed to run the program.
 
 CC = emcc
 CXX = em++
-EXE = example_emscripten.html
-SOURCES = main.cpp
+EXE = nightingale_emscripten.html
+SOURCES = main_emscripten.cpp app.cpp addons.cpp
 SOURCES += ../imgui_impl_sdl.cpp ../imgui_impl_opengl3.cpp
 SOURCES += ../../imgui.cpp ../../imgui_demo.cpp ../../imgui_draw.cpp ../../imgui_widgets.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
@@ -36,7 +36,7 @@ EMS += -s ASSERTIONS=1
 #EMS += -s SAFE_HEAP=1    ## Adds overhead
 
 # Emscripten allows preloading a file or folder to be accessible at runtime.
-# The Makefile for this example project suggests embedding the misc/fonts/ folder into our application, it will then be accessible as "/fonts"
+# The Makefile for this project suggests embedding the fonts folder into our application, it will then be accessible as "/fonts"
 # See documentation for more details: https://emscripten.org/docs/porting/files/packaging_files.html
 # (Default value is 0. Set to 1 to enable file-system and include the misc/fonts/ folder as part of the build.)
 USE_FILE_SYSTEM ?= 0

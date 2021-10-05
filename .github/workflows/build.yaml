@@ -84,9 +84,25 @@ jobs:
     - name: Build
       run: make -f Makefile.desktop
 
-    - run: |
-        pwd
-        find .
+    - name: Check Product
+      run: |
+        ls -l nightingale
+        file nightingale
+
+    - name: Package Product
+      run: |
+        chmod +x nightingale
+        zip -r nightingale-mac.zip nightingale
+
+    - name: Archive Product
+      uses: actions/upload-artifact@v1
+      with:
+        name: nightingale-mac.zip
+        path: nightingale-mac.zip
+
+    # - run: |
+    #     pwd
+    #     find .
 
   # iOS:
   #   runs-on: macOS-latest
