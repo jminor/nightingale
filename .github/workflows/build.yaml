@@ -7,49 +7,49 @@ on:
     branches: [ main ]
 
 jobs:
-  Windows:
-    runs-on: windows-2019
-    env:
-      VS_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\
-      MSBUILD_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      # Until gh-actions allow us to use env variables inside other env variables (because we need %GITHUB_WORKSPACE%) we have to use relative path to imgui/examples/example_name directory.
-      SDL2_DIR: ..\..\SDL2-devel-2.0.10-VC\SDL2-2.0.10\
-      VULKAN_SDK: ..\..\vulkan-sdk-1.1.121.2\
-    steps:
-      - uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
+  # Windows:
+  #   runs-on: windows-2019
+  #   env:
+  #     VS_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\
+  #     MSBUILD_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+  #     # Until gh-actions allow us to use env variables inside other env variables (because we need %GITHUB_WORKSPACE%) we have to use relative path to imgui/examples/example_name directory.
+  #     SDL2_DIR: ..\..\SDL2-devel-2.0.10-VC\SDL2-2.0.10\
+  #     VULKAN_SDK: ..\..\vulkan-sdk-1.1.121.2\
+  #   steps:
+  #     - uses: actions/checkout@v1
+  #       with:
+  #         fetch-depth: 1
 
-      - name: Install Dependencies
-        shell: powershell
-        run: |
-          Invoke-WebRequest -Uri "https://www.libsdl.org/release/SDL2-devel-2.0.10-VC.zip" -OutFile "SDL2-devel-2.0.10-VC.zip"
-          Expand-Archive -Path SDL2-devel-2.0.10-VC.zip
-          Invoke-WebRequest -Uri "https://github.com/ocornut/imgui/files/3789205/vulkan-sdk-1.1.121.2.zip" -OutFile vulkan-sdk-1.1.121.2.zip
-          Expand-Archive -Path vulkan-sdk-1.1.121.2.zip
+  #     - name: Install Dependencies
+  #       shell: powershell
+  #       run: |
+  #         Invoke-WebRequest -Uri "https://www.libsdl.org/release/SDL2-devel-2.0.10-VC.zip" -OutFile "SDL2-devel-2.0.10-VC.zip"
+  #         Expand-Archive -Path SDL2-devel-2.0.10-VC.zip
+  #         Invoke-WebRequest -Uri "https://github.com/ocornut/imgui/files/3789205/vulkan-sdk-1.1.121.2.zip" -OutFile vulkan-sdk-1.1.121.2.zip
+  #         Expand-Archive -Path vulkan-sdk-1.1.121.2.zip
 
-      - name: Fix Projects
-        shell: powershell
-        run: |
-          # WARNING: This will need updating if toolset/sdk change in project files!
-          gci -recurse -filter "*.vcxproj" | ForEach-Object {
-            # Fix SDK and toolset for most samples.
-            (Get-Content $_.FullName) -Replace "<PlatformToolset>v110</PlatformToolset>","<PlatformToolset>v142</PlatformToolset>" | Set-Content -Path $_.FullName
-            (Get-Content $_.FullName) -Replace "<WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>","<WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>" | Set-Content -Path $_.FullName
-            # Fix SDK and toolset for samples that require newer SDK/toolset. At the moment it is only dx12.
-            (Get-Content $_.FullName) -Replace "<PlatformToolset>v140</PlatformToolset>","<PlatformToolset>v142</PlatformToolset>" | Set-Content -Path $_.FullName
-            (Get-Content $_.FullName) -Replace "<WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>","<WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>" | Set-Content -Path $_.FullName
-          }
+  #     - name: Fix Projects
+  #       shell: powershell
+  #       run: |
+  #         # WARNING: This will need updating if toolset/sdk change in project files!
+  #         gci -recurse -filter "*.vcxproj" | ForEach-Object {
+  #           # Fix SDK and toolset for most samples.
+  #           (Get-Content $_.FullName) -Replace "<PlatformToolset>v110</PlatformToolset>","<PlatformToolset>v142</PlatformToolset>" | Set-Content -Path $_.FullName
+  #           (Get-Content $_.FullName) -Replace "<WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>","<WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>" | Set-Content -Path $_.FullName
+  #           # Fix SDK and toolset for samples that require newer SDK/toolset. At the moment it is only dx12.
+  #           (Get-Content $_.FullName) -Replace "<PlatformToolset>v140</PlatformToolset>","<PlatformToolset>v142</PlatformToolset>" | Set-Content -Path $_.FullName
+  #           (Get-Content $_.FullName) -Replace "<WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>","<WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>" | Set-Content -Path $_.FullName
+  #         }
 
-      # Not using matrix here because it would inflate job count too much. Check out and setup is done for every job and that makes build times way too long.
-      - name: Build Win32 example_glfw_opengl3
-        shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" nightingale.vcxproj /p:Platform=Win32 /p:Configuration=Release'
-        if: github.event_name == 'schedule'
+  #     # Not using matrix here because it would inflate job count too much. Check out and setup is done for every job and that makes build times way too long.
+  #     - name: Build Win32 example_glfw_opengl3
+  #       shell: cmd
+  #       run: '"%MSBUILD_PATH%\MSBuild.exe" nightingale.vcxproj /p:Platform=Win32 /p:Configuration=Release'
+  #       if: github.event_name == 'schedule'
 
-      - name: Build x64 example_glfw_opengl3
-        shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" nightingale.vcxproj /p:Platform=x64 /p:Configuration=Release'
+  #     - name: Build x64 example_glfw_opengl3
+  #       shell: cmd
+  #       run: '"%MSBUILD_PATH%\MSBuild.exe" nightingale.vcxproj /p:Platform=x64 /p:Configuration=Release'
 
   Linux:
     runs-on: ubuntu-18.04
@@ -63,9 +63,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libglfw3-dev gcc-multilib g++-multilib libfreetype6-dev
 
-    - name: Build example_glfw_opengl3
-      run: make -C examples/example_glfw_opengl3
-      if: github.event_name == 'schedule'
+    - name: Build
+      run: make -f Makefile.desktop
+
+    - run: |
+      pwd
+      find .
 
   MacOS:
     runs-on: macOS-latest
@@ -78,8 +81,12 @@ jobs:
       run: |
         brew install glfw3
 
-    - name: Build example_glfw_opengl3
-      run: make -C examples/example_glfw_opengl3
+    - name: Build
+      run: make -f Makefile.desktop
+
+    - run: |
+      pwd
+      find .
 
   # iOS:
   #   runs-on: macOS-latest
@@ -108,8 +115,12 @@ jobs:
         emsdk-master/emsdk install latest-fastcomp
         emsdk-master/emsdk activate latest-fastcomp
 
-    - name: Build example_emscripten
+    - name: Build
       run: |
         source emsdk-master/emsdk_env.sh
-        make -C examples/example_emscripten
+        make -f Makefile.emscripten
+
+    - run: |
+      pwd
+      find .
 
