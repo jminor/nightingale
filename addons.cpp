@@ -1,8 +1,18 @@
 
 #ifdef __EMSCRIPTEN__
 #define WITH_SDL2_STATIC
-#else
+#endif
+
+#ifdef __APPLE__
 #define WITH_COREAUDIO
+#endif
+
+#ifdef __linux__
+#define WITH_PORTAUDIO
+#endif
+
+#ifdef _WIN32
+#define WITH_WINMM
 #endif
 
 #define YES_IMGUISOLOUD_SPEECH
