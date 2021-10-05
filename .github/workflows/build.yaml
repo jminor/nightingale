@@ -68,7 +68,7 @@ jobs:
 
     - run: |
         pwd
-        find .
+        ls -la
 
   MacOS:
     runs-on: macOS-latest
@@ -102,7 +102,7 @@ jobs:
 
     # - run: |
     #     pwd
-    #     find .
+    #     ls -la
 
   # iOS:
   #   runs-on: macOS-latest
@@ -136,7 +136,17 @@ jobs:
         source emsdk-master/emsdk_env.sh
         make -f Makefile.emscripten
 
-    - run: |
-        pwd
-        find .
+    - name: Check Product
+      run: |
+        ls -l nightingale_emscripten.*
+        file nightingale_emscripten.*
 
+    - name: Package Product
+      run: |
+        zip -r nightingale-web.zip nightingale_emscripten.*
+
+    - name: Archive Product
+      uses: actions/upload-artifact@v1
+      with:
+        name: nightingale-web.zip
+        path: nightingale-web.zip

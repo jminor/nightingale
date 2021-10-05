@@ -8,7 +8,7 @@
 #endif
 
 #ifdef __linux__
-#define WITH_PORTAUDIO
+#define WITH_ALSA
 #endif
 
 #ifdef _WIN32
