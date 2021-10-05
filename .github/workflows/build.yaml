@@ -67,8 +67,8 @@ jobs:
       run: make -f Makefile.desktop
 
     - run: |
-      pwd
-      find .
+        pwd
+        find .
 
   MacOS:
     runs-on: macOS-latest
@@ -85,8 +85,8 @@ jobs:
       run: make -f Makefile.desktop
 
     - run: |
-      pwd
-      find .
+        pwd
+        find .
 
   # iOS:
   #   runs-on: macOS-latest
@@ -121,6 +121,6 @@ jobs:
         make -f Makefile.emscripten
 
     - run: |
-      pwd
-      find .
+        pwd
+        find .
 
