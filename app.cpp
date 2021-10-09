@@ -31,15 +31,16 @@ AppState appState;
 
 //   Files in the application assets/ folder are embedded automatically
 //   (on iOS/Android/Emscripten)
-ImFont * gTechFont = nullptr;
+ImFont *gTechFont = nullptr;
+ImFont *gIconFont = nullptr;
 void LoadFonts()
 {
-  // First, we load the default fonts (the font that was loaded first is the default font)
-  // HelloImGui::ImGuiDefaultSettings::LoadDefaultFont_WithFontAwesomeIcons();
+  ImGuiIO& io = ImGui::GetIO();
 
-  // Since this font is in a local assets/ folder, it was embedded automatically
-  // std::string fontFilename = "fonts/ShareTechMono-Regular.ttf";
-  // gTechFont = HelloImGui::LoadFontTTF_WithFontAwesomeIcons(fontFilename, 20.f);
+  gTechFont = io.Fonts->AddFontFromFileTTF("fonts/ShareTechMono-Regular.ttf", 20.0f);
+
+  static const ImWchar icon_fa_ranges[] = { 0xF000, 0xF18B, 0 };
+  gIconFont = io.Fonts->AddFontFromFileTTF("fonts/fontawesome-webfont.ttf", 20.0f, NULL, icon_fa_ranges);
 }
 
 void Style_Mono()
@@ -50,6 +51,7 @@ void Style_Mono()
   style.GrabRounding = 1;
   style.GrabMinSize = 20;
   style.FrameRounding = 3;
+  style.WindowBorderSize = 0;
 
   ImVec4* colors = style.Colors;
   colors[ImGuiCol_Text]                   = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
@@ -104,64 +106,6 @@ void Style_Mono()
   colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
 }
 
-void Style_Maya()
-{
-  ImGuiStyle &style = ImGui::GetStyle();
-
-  style.ChildRounding = 3.f;
-  style.GrabRounding = 0.f;
-  style.WindowRounding = 0.f;
-  style.ScrollbarRounding = 3.f;
-  style.FrameRounding = 3.f;
-  style.WindowTitleAlign = ImVec2(0.5f,0.5f);
-  style.WindowBorderSize = style.FrameBorderSize = 1.f;
-
-  style.Colors[ImGuiCol_Text]                  = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
-  style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-  style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.26f, 0.26f, 0.26f, 0.95f);
-  style.Colors[ImGuiCol_ChildBg]         = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
-  style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-  //style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.32f, 0.32f, 0.32f, 1.00f);
-  style.Colors[ImGuiCol_Border]                = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-  style.Colors[ImGuiCol_BorderShadow]          = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-  style.Colors[ImGuiCol_FrameBg]               = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-  style.Colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-  style.Colors[ImGuiCol_FrameBgActive]         = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-  style.Colors[ImGuiCol_TitleBg]               = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_TitleBgActive]         = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_MenuBarBg]             = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-  style.Colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);
-  style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.78f, 0.78f, 0.78f, 1.00f);
-  style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.74f, 0.74f, 0.74f, 1.00f);
-  style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.74f, 0.74f, 0.74f, 1.00f);
-  style.Colors[ImGuiCol_Button]                = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.43f, 0.43f, 0.43f, 1.00f);
-  style.Colors[ImGuiCol_ButtonActive]          = ImVec4(0.11f, 0.11f, 0.11f, 1.00f);
-  style.Colors[ImGuiCol_Header]                = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_HeaderHovered]         = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_HeaderActive]          = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_Separator]                = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-  style.Colors[ImGuiCol_SeparatorHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-  style.Colors[ImGuiCol_SeparatorActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-  style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-  style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-  /*style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
-  style.Colors[ImGuiCol_CloseButtonHovered]    = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
-  style.Colors[ImGuiCol_CloseButtonActive]     = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);*/
-  style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
-  style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-  style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-  style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-  style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.32f, 0.52f, 0.65f, 1.00f);
-  style.Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
-
-}
-
 SoLoud::Speech speech;
 
 void LoadSpeech(const char* text)
@@ -213,6 +157,14 @@ void Seek(float time) {
   }
   appState.audio.seek(appState.audio_handle, appState.playhead);
   appState.selection_start = appState.wav.mSampleCount * (appState.playhead / appState.wav.getLength());
+}
+
+bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
+{
+  ImGui::PushFont(gIconFont);
+  bool result = ImGui::Button(label, size);
+  ImGui::PopFont();
+  return result;
 }
 
 void MainGui()
@@ -351,7 +303,7 @@ void MainGui()
 
   // toggle
   if (!playing) {
-    if (ImGui::Button("##Play", button_size)) {
+    if (IconButton("\uF04B##Play", button_size)) {
       if (appState.audio_handle) {
         appState.audio.setPause(appState.audio_handle, false);
       }else{
@@ -360,21 +312,21 @@ void MainGui()
       }
     }
   }else{
-    if (ImGui::Button("##Pause", button_size)) {
+    if (IconButton("\uF04C##Pause", button_size)) {
       appState.audio.setPause(appState.audio_handle, true);
     }
   }
 
   ImGui::SameLine();
 
-  if (ImGui::Button("##Stop", button_size)) {
+  if (IconButton("\uF04D##Stop", button_size)) {
     appState.audio.stopAll();
   }
 
   ImGui::SameLine();
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, appState.loop ? 2 : 0);
   // ImGui::PushStyleColor(ImGuiCol_Border, style.Colors[ImGuiCol_ButtonActive]);
-  if (ImGui::Button("##Loop", button_size)) {
+  if (IconButton("\uF021##Loop", button_size)) {
     appState.loop = !appState.loop;
     appState.audio.setLooping(appState.audio_handle, appState.loop);
   }
@@ -387,13 +339,13 @@ void MainGui()
 
   ImGui::SameLine();
 
-  if (ImGui::Button("##Load", button_size)) {
+  if (IconButton("\uF07C##Load", button_size)) {
     ImGui::OpenPopup("Load file");
   }
 
   ImGui::SameLine();
 
-  if (ImGui::Button("##Settings", button_size)) {
+  if (IconButton("\uF013##Settings", button_size)) {
     ImGui::OpenPopup("Style Editor");
   }
 
