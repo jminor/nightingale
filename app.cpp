@@ -25,6 +25,8 @@ struct AppState
   SoLoud::Soloud audio;
   SoLoud::handle audio_handle;
   SoLoud::Wav wav;
+
+  bool show_demo_window = false;
 };
 
 AppState appState;
@@ -345,8 +347,18 @@ void MainGui()
 
   ImGui::SameLine();
 
-  if (IconButton("\uF013##Settings", button_size)) {
+  if (IconButton("\uF0AE##Style", button_size)) {
     ImGui::OpenPopup("Style Editor");
+  }
+
+  ImGui::SameLine();
+
+  if (IconButton("\uF013#Demo", button_size)) {
+    appState.show_demo_window = !appState.show_demo_window;
+  }
+
+  if (appState.show_demo_window) {
+    ImGui::ShowDemoWindow();
   }
 
   if (ImGui::BeginPopup("Style Editor")) {
