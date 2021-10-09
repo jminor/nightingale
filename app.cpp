@@ -7,6 +7,7 @@
 #define YES_IMGUISOLOUD_ALL
 #include "imguisoloud.h"
 #include "imgui_plot.h"
+#include "imgui_internal.h"
 
 #ifdef HELLOIMGUI_USE_SDL_OPENGL3
 #include <SDL.h>
@@ -26,6 +27,7 @@ struct AppState
   SoLoud::handle audio_handle;
   SoLoud::Wav wav;
 
+  bool initialized = false;
   bool show_demo_window = false;
 };
 
@@ -172,13 +174,15 @@ bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
 void MainGui()
 {
   ImGuiStyle& style = ImGui::GetStyle();
-  ImGuiIO& io = ImGui::GetIO();
 
-  // ImGui::SetNextWindowPos(ImVec2(0,0));
-  // ImVec2 winSize = io.DisplaySize;
-  // ImGui::SetNextWindowSize(winSize);
+  if (!appState.initialized) {
+    ImGuiIO& io = ImGui::GetIO();
+    // ImGui::SetNextWindowPos(ImVec2(0,0));
+    ImVec2 winSize = io.DisplaySize;
+    ImGui::SetNextWindowSize(winSize);
+  }
   ImGui::Begin(
-      "Main Window"
+      "Nightingale"
       // nullptr,
       // ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus
       );
@@ -371,6 +375,8 @@ void MainGui()
   }
 
   ImGui::End();
+
+  appState.initialized = true;
 }
 
 // int main(int, char **)
