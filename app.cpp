@@ -213,6 +213,8 @@ void MainGui()
     ImGui::EndPopup();
   }
 
+  ImGui::PushItemWidth(-100);
+
   if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
     appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
@@ -297,9 +299,11 @@ void MainGui()
   ImGui::SameLine();
   ImGui::Text("Waveform\nFull");
 
+  ImGui::PopItemWidth();
 
+  int num_buttons = 6;
   ImVec2 button_size(
-    (width - style.ItemSpacing.x*4)/5,
+    (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
     ImGui::GetTextLineHeight()*2
     );
 
