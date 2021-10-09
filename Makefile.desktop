@@ -79,15 +79,17 @@ ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
 	CFLAGS = $(CXXFLAGS)
 endif
 
+CXXONLYFLAGS = -std=c++11
+
 ##---------------------------------------------------------------------
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
 %.o:%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(CXXONLYFLAGS) -c -o $@ $<
 
 %.o:imgui/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(CXXONLYFLAGS) -c -o $@ $<
 
 %.o:libs/gl3w/GL/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
