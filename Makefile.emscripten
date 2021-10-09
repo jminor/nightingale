@@ -51,7 +51,7 @@ endif
 ## FINAL BUILD FLAGS
 ##---------------------------------------------------------------------
 
-CPPFLAGS += -I.
+CPPFLAGS += -I. -I./imgui
 #CPPFLAGS += -g
 CPPFLAGS += -Wall -Wformat -Os
 CPPFLAGS += $(EMS)
@@ -72,6 +72,7 @@ LDFLAGS += --shell-file shell_minimal.html
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 all: $(EXE)
+	@echo Platform is $(UNAME_S)
 	@echo Build complete for $(EXE)
 
 $(EXE): $(OBJS)

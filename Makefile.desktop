@@ -96,6 +96,7 @@ endif
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 all: $(EXE)
+	@echo Platform is $(UNAME_S)
 	@echo Build complete for $(ECHO_MESSAGE)
 
 $(EXE): $(OBJS)
