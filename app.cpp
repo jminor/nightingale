@@ -174,13 +174,13 @@ void MainGui()
   ImGuiStyle& style = ImGui::GetStyle();
   ImGuiIO& io = ImGui::GetIO();
 
-  ImGui::SetNextWindowPos(ImVec2(0,0));
-  ImVec2 winSize = io.DisplaySize;
-  ImGui::SetNextWindowSize(winSize);
+  // ImGui::SetNextWindowPos(ImVec2(0,0));
+  // ImVec2 winSize = io.DisplaySize;
+  // ImGui::SetNextWindowSize(winSize);
   ImGui::Begin(
-      "Main Window",
-      nullptr,
-      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus
+      "Main Window"
+      // nullptr,
+      // ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus
       );
 
   bool playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
