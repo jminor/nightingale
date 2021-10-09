@@ -54,7 +54,7 @@ CXXFLAGS += -Ilibs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
-	LIBS += -lGL `pkg-config --static --libs glfw3`
+	LIBS += -lGL `pkg-config --static --libs glfw3` -lasound
 
 	CXXFLAGS += `pkg-config --cflags glfw3` -pthread
 	CFLAGS = $(CXXFLAGS)
