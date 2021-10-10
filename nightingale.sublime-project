@@ -9,7 +9,7 @@
     [
         {
             "name": "make",
-			"shell_cmd": "make -f Makefile.desktop && ./nightingale",
+			"shell_cmd": "make && ./nightingale",
 			"working_dir": "$project_path",
 		    "file_regex": "^(.*?):([0-9]+):([0-9]+): ([a-z]+: .*)"
 

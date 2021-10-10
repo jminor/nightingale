@@ -18,5 +18,3 @@
 #define YES_IMGUISOLOUD_SPEECH
 
 #include "imguisoloud.cpp"
-
-#include "imgui_plot.cpp"
