@@ -6,7 +6,10 @@
 
 #define YES_IMGUISOLOUD_ALL
 #include "imguisoloud.h"
+#include "imguinodegrapheditor.h"
+#include "imguihelper.h"
 #include "imgui_plot.h"
+#include "imguifilesystem.h"
 #include "imgui_internal.h"
 
 #ifdef HELLOIMGUI_USE_SDL_OPENGL3
@@ -27,7 +30,10 @@ struct AppState
   SoLoud::handle audio_handle;
   SoLoud::Wav wav;
 
-  bool initialized = false;
+  ImGui::NodeGraphEditor nge;
+  
+  bool show_style_editor = false;
+  bool show_node_graph = true;
   bool show_demo_window = false;
 };
 
@@ -55,7 +61,8 @@ void Style_Mono()
   style.GrabRounding = 1;
   style.GrabMinSize = 20;
   style.FrameRounding = 3;
-  style.WindowBorderSize = 0;
+  style.WindowBorderSize = 1;
+  style.FrameBorderSize = 1;
 
   ImVec4* colors = style.Colors;
   colors[ImGuiCol_Text]                   = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
@@ -91,12 +98,12 @@ void Style_Mono()
   colors[ImGuiCol_ResizeGrip]             = ImVec4(0.00f, 1.00f, 1.00f, 0.54f);
   colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.00f, 1.00f, 1.00f, 0.74f);
   colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.80f, 0.99f, 0.99f, 1.00f);
-  colors[ImGuiCol_Tab]                    = ImVec4(0.18f, 0.35f, 0.58f, 0.86f);
-  colors[ImGuiCol_TabHovered]             = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-  colors[ImGuiCol_TabActive]              = ImVec4(0.31f, 0.50f, 0.74f, 1.00f);
-  colors[ImGuiCol_TabUnfocused]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
-  colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
-  colors[ImGuiCol_DockingPreview]         = ImVec4(0.26f, 0.59f, 0.98f, 0.70f);
+  colors[ImGuiCol_Tab]                    = ImVec4(0.12f, 0.31f, 0.31f, 1.00f);
+  colors[ImGuiCol_TabHovered]             = ImVec4(0.80f, 0.99f, 0.99f, 1.00f);
+  colors[ImGuiCol_TabActive]              = ImVec4(0.00f, 0.62f, 0.62f, 1.00f);
+  colors[ImGuiCol_TabUnfocused]           = ImVec4(0.08f, 0.15f, 0.15f, 1.00f);
+  colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.43f, 0.43f, 1.00f);
+  colors[ImGuiCol_DockingPreview]         = ImVec4(0.80f, 0.99f, 0.99f, 1.00f);
   colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
   colors[ImGuiCol_PlotLines]              = ImVec4(0.80f, 0.99f, 0.99f, 1.00f);
   colors[ImGuiCol_PlotLinesHovered]       = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
@@ -104,7 +111,7 @@ void Style_Mono()
   colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
   colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.00f, 1.00f, 1.00f, 0.22f);
   colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-  colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+  colors[ImGuiCol_NavHighlight]           = ImVec4(0.94f, 0.98f, 0.26f, 1.00f);
   colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
   colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
   colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
@@ -180,17 +187,21 @@ void MainGui()
 {
   ImGuiStyle& style = ImGui::GetStyle();
 
-  if (!appState.initialized) {
-    ImGuiIO& io = ImGui::GetIO();
-    // ImGui::SetNextWindowPos(ImVec2(0,0));
-    ImVec2 winSize = io.DisplaySize;
-    ImGui::SetNextWindowSize(winSize);
-  }
+  ImGuiIO& io = ImGui::GetIO();
+  // ImGui::SetNextWindowPos(ImVec2(0,0));
+  ImVec2 winSize = io.DisplaySize;
+  ImGui::SetNextWindowSize(winSize, ImGuiCond_FirstUseEver);
+
+  bool stay_open = true;
   ImGui::Begin(
-      "Nightingale"
-      // nullptr,
+      "Nightingale",
+      &stay_open
       // ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus
       );
+
+  if (!stay_open) {
+    exit(0);
+  }
 
   bool playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
 
@@ -204,22 +215,6 @@ void MainGui()
   if (playing) {
     appState.selection_start = appState.wav.mSampleCount * appState.playhead / appState.wav.getLength();
     // appState.selection_length = 256;
-  }
-
-  ImGui::SetNextWindowSize(ImVec2(400,200));
-  if (ImGui::BeginPopupModal("Load file")) {
-    ImGui::InputText("File path", appState.file_path, sizeof(appState.file_path));
-
-    if(ImGui::Button("Load##now")) {
-      LoadAudio(appState.file_path);
-    }
-
-    ImGui::SameLine();
-
-    if(ImGui::Button("Close")) {
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::EndPopup();
   }
 
   ImGui::PushItemWidth(-100);
@@ -310,7 +305,7 @@ void MainGui()
 
   ImGui::PopItemWidth();
 
-  int num_buttons = 6;
+  int num_buttons = 7;
   ImVec2 button_size(
     (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
     ImGui::GetTextLineHeight()*2
@@ -339,7 +334,7 @@ void MainGui()
   }
 
   ImGui::SameLine();
-  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, appState.loop ? 2 : 0);
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, appState.loop ? 4 : 1);
   // ImGui::PushStyleColor(ImGuiCol_Border, style.Colors[ImGuiCol_ButtonActive]);
   if (IconButton("\uF021##Loop", button_size)) {
     appState.loop = !appState.loop;
@@ -354,14 +349,31 @@ void MainGui()
 
   ImGui::SameLine();
 
-  if (IconButton("\uF07C##Load", button_size)) {
-    ImGui::OpenPopup("Load file");
+  const bool browseButtonPressed = IconButton("\uF07C##Load", button_size);                          // we need a trigger boolean variable
+  static ImGuiFs::Dialog dlg;                                         
+  const char* chosenPath = dlg.chooseFileDialog(
+    browseButtonPressed,
+    dlg.getLastDirectory(),
+    ".wav;.ogg",
+    "Load Audio File"
+  );
+  if (strlen(chosenPath)>0) {
+    LoadAudio(chosenPath);
+  }
+  // if (strlen(dlg.getChosenPath())>0) {
+  //     ImGui::Text("Chosen file: \"%s\"",dlg.getChosenPath());
+  // }
+
+  ImGui::SameLine();
+
+  if (IconButton("\uF074##NodeGraph", button_size)) {
+    appState.show_node_graph = !appState.show_node_graph;
   }
 
   ImGui::SameLine();
 
   if (IconButton("\uF0AE##Style", button_size)) {
-    ImGui::OpenPopup("Style Editor");
+    appState.show_style_editor = !appState.show_style_editor;
   }
 
   ImGui::SameLine();
@@ -374,14 +386,23 @@ void MainGui()
     ImGui::ShowDemoWindow();
   }
 
-  if (ImGui::BeginPopup("Style Editor")) {
-    ImGui::ShowStyleEditor();
-    ImGui::EndPopup();
+  if (appState.show_node_graph) {
+    ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
+    {
+        ImGui::TestNodeGraphEditor(appState.nge);
+    }
+    ImGui::End();
+  }
+
+  if (appState.show_style_editor) {
+    if (ImGui::Begin("Style Editor", &appState.show_style_editor)) {
+      ImGui::ShowStyleEditor();
+    }
+    ImGui::End();
   }
 
   ImGui::End();
-
-  appState.initialized = true;
 }
 
 // int main(int, char **)
