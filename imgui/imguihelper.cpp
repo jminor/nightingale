@@ -40,6 +40,9 @@ bool OpenWithDefaultApplication(const char* url,bool exploreModeForWindowsOS)	{
             //CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);  // Needed ??? Well, let's suppose the user initializes it himself for now"
             return ((size_t)ShellExecuteA( NULL, exploreModeForWindowsOS ? "explore" : "open", url, "", ".", SW_SHOWNORMAL ))>32;
 #       else //_WIN32
+#       ifdef __EMSCRIPTEN__
+            return false;
+#       else //__EMSCRIPTEN__
             if (exploreModeForWindowsOS) exploreModeForWindowsOS = false;   // No warnings
             char tmp[4096];
             const char* openPrograms[]={"xdg-open","gnome-open"};	// Not sure what can I append here for MacOS
@@ -68,6 +71,7 @@ bool OpenWithDefaultApplication(const char* url,bool exploreModeForWindowsOS)	{
             strcat(tmp,url);
             strcat(tmp,"\"");
             return system(tmp)==0;
+#       endif //__EMSCRIPTEN__
 #       endif //_WIN32
 }
 
