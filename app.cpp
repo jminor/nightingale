@@ -186,6 +186,77 @@ bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
   return result;
 }
 
+ImU32 ImLerpColors(ImU32 col_a, ImU32 col_b, float t)
+{
+    int r = ImLerp((int)(col_a >> IM_COL32_R_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_R_SHIFT) & 0xFF, t);
+    int g = ImLerp((int)(col_a >> IM_COL32_G_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_G_SHIFT) & 0xFF, t);
+    int b = ImLerp((int)(col_a >> IM_COL32_B_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_B_SHIFT) & 0xFF, t);
+    int a = ImLerp((int)(col_a >> IM_COL32_A_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_A_SHIFT) & 0xFF, t);
+    return IM_COL32(r, g, b, a);
+}
+
+float qqq(float v) {
+  return 1.0f - (1.0f - v) * (1.0f - v);
+}
+
+void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
+{
+  ImGuiStyle& style = ImGui::GetStyle();
+  ImGuiWindow* window = ImGui::GetCurrentWindow();
+  ImDrawList *dl = window->DrawList;
+  dl->AddRect(
+    pos,
+    ImVec2(
+      pos.x + size.x,
+      pos.y + size.y
+    ),
+    ImGui::GetColorU32(ImGuiCol_Border),
+    style.FrameRounding
+  );
+
+  ImU32 base_color = ImGui::GetColorU32(ImGuiCol_FrameBg);
+  ImU32 volume_color = ImLerpColors(
+    base_color,
+    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    qqq(volume)
+  );
+  ImU32 peak_color = ImLerpColors(
+    base_color,
+    IM_COL32(0xff, 0, 0, 0x88),
+    qqq(peak)
+  );
+
+  dl->AddRectFilledMultiColor(
+    ImVec2(
+      pos.x,
+      pos.y + size.y * (1.0 - peak)
+    ),
+    ImVec2(
+      pos.x + size.x,
+      pos.y + size.y
+    ),
+    peak_color,
+    peak_color,
+    base_color,
+    base_color
+  );
+
+  dl->AddRectFilledMultiColor(
+    ImVec2(
+      pos.x,
+      pos.y + size.y * (1.0 - volume)
+    ),
+    ImVec2(
+      pos.x + size.x,
+      pos.y + size.y
+    ),
+    volume_color,
+    volume_color,
+    base_color,
+    base_color
+  );
+}
+
 void MainGui()
 {
   ImGuiStyle& style = ImGui::GetStyle();
@@ -301,10 +372,40 @@ void MainGui()
     appState.selection_length = fmax(appState.selection_length, 256);
   }
 
+  ImVec2 size = ImGui::GetItemRectSize();
+  ImVec2 corner = ImGui::GetItemRectMax();
+
   ImGui::SameLine();
   ImGui::Text("Waveform\nFull");
 
   ImGui::PopItemWidth();
+
+  static float peak = 0;
+  static float volume = 0;
+  float max_sample = 0;
+  float* data = appState.audio.getWave();
+  for (int i=0; i<256; i++) {
+    if (data[i] > max_sample) max_sample = data[i];
+  }
+
+  volume = volume * 0.9f + max_sample * 0.1f;
+  peak = fmax(volume, peak * 0.999f);
+
+  size.y *= 0.7f;
+  size.x = 90;
+  DrawVolumeMeter(
+    ImVec2(
+      corner.x + style.ItemSpacing.x,
+      corner.y - size.y
+    ),
+    size,
+    volume,
+    peak
+  );
+
+  // float dB = 20.0f * log10(volume);
+  // ImGui::Text("%f dB", dB);
+
 
   int num_buttons = 7;
   ImVec2 button_size(
