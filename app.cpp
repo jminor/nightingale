@@ -30,8 +30,11 @@ struct AppState
   SoLoud::handle audio_handle;
   SoLoud::Wav wav;
 
+  char speech_text[1024];
+
   ImGui::NodeGraphEditor nge;
   
+  bool show_main_window = true;
   bool show_style_editor = false;
   bool show_node_graph = true;
   bool show_demo_window = false;
@@ -39,7 +42,7 @@ struct AppState
 
 AppState appState;
 
-//   Files in the application assets/ folder are embedded automatically
+//   Files in the application fonts/ folder are embedded automatically
 //   (on iOS/Android/Emscripten)
 ImFont *gTechFont = nullptr;
 ImFont *gIconFont = nullptr;
@@ -192,14 +195,12 @@ void MainGui()
   ImVec2 winSize = io.DisplaySize;
   ImGui::SetNextWindowSize(winSize, ImGuiCond_FirstUseEver);
 
-  bool stay_open = true;
   ImGui::Begin(
       "Nightingale",
-      &stay_open
-      // ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus
+      &appState.show_main_window
       );
 
-  if (!stay_open) {
+  if (!appState.show_main_window) {
     exit(0);
   }
 
@@ -350,7 +351,7 @@ void MainGui()
   ImGui::SameLine();
 
   const bool browseButtonPressed = IconButton("\uF07C##Load", button_size);                          // we need a trigger boolean variable
-  static ImGuiFs::Dialog dlg;                                         
+  static ImGuiFs::Dialog dlg;
   const char* chosenPath = dlg.chooseFileDialog(
     browseButtonPressed,
     dlg.getLastDirectory(),
@@ -401,6 +402,36 @@ void MainGui()
     }
     ImGui::End();
   }
+
+  ImGui::Spacing();
+
+  if (strlen(appState.file_path)>0) {
+    ImGui::Text("%s", appState.file_path);
+  }else{
+    ImGui::Text("No file loaded.");
+  }
+
+  ImGui::Spacing();
+
+  ImGui::PushItemWidth(-100 - button_size.x - style.ItemSpacing.x);
+
+  if (ImGui::InputTextWithHint(
+    "##Speak",
+    "Type something here",
+    appState.speech_text,
+    sizeof(appState.speech_text),
+    ImGuiInputTextFlags_EnterReturnsTrue
+    )) {
+    LoadSpeech(appState.speech_text);
+  }
+
+  ImGui::SameLine();
+
+  if (IconButton("\uF075##Speak", ImVec2(button_size.x, ImGui::GetItemRectSize().y))) {
+    LoadSpeech(appState.speech_text);
+  }
+
+  ImGui::PopItemWidth();
 
   ImGui::End();
 }
