@@ -82,7 +82,7 @@ jobs:
         name: nightingale-linux.zip
         path: nightingale-linux.zip
 
-  Windows Cross-Compile:
+  Windows-Cross-Compile:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
