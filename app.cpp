@@ -28,7 +28,11 @@ struct AppState
 
   SoLoud::Soloud audio;
   SoLoud::handle audio_handle;
+
+  SoLoud::AudioSource *source;
+  SoLoud::Speech speech;
   SoLoud::Wav wav;
+  SoLoud::Modplug mod;
 
   char speech_text[1024];
 
@@ -41,6 +45,8 @@ struct AppState
 };
 
 AppState appState;
+
+
 
 //   Files in the application fonts/ folder are embedded automatically
 //   (on iOS/Android/Emscripten)
@@ -120,12 +126,10 @@ void Style_Mono()
   colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
 }
 
-SoLoud::Speech speech;
-
 void LoadSpeech(const char* text)
 {
-  speech.setText(text);
-  appState.audio.play(speech);
+  appState.speech.setText(text);
+  appState.audio_handle = appState.audio.play(appState.speech);
   // printf("speech mFrames = %d\n", speech.mFrames);
   // printf("speech mElement size = %d\n", speech.mElement.getSize());
   // auto instance = (SoLoud::SpeechInstance*)speech.createInstance();
@@ -139,11 +143,27 @@ void LoadSpeech(const char* text)
 void LoadAudio(const char* path)
 {
   strncpy(appState.file_path, path, sizeof(appState.file_path));
-  
-  auto err = appState.wav.load(path);
+
+  SoLoud::result err;
+  if (!strncmp(".wav", path+strlen(path)-4, 4)) {
+    err = appState.wav.load(path);
+    if (!err) {
+      appState.source = &appState.wav;
+      fprintf(stderr, "Loaded file: %s\n", path);
+      fprintf(stderr, "mSampleCount: %d\n", appState.wav.mSampleCount);
+      fprintf(stderr, "duration: %f\n", appState.wav.getLength());
+    }
+  }else{
+    err = appState.mod.load(path);
+    if (!err) {
+      appState.source = &appState.mod;
+      fprintf(stderr, "Loaded file: %s\n", path);
+      fprintf(stderr, "mDataLen: %d\n", appState.mod.mDataLen);
+      fprintf(stderr, "duration: %f\n", appState.mod.getLength());
+    }
+  }
   if (err) {
-    fprintf(stderr, "Failed to load WAV: %s: %s\n", appState.audio.getErrorString(err), path);
-    LoadSpeech("Failed to load audio file.");
+    fprintf(stderr, "Failed to load file: %s: %s\n", appState.audio.getErrorString(err), path);
   }
 }
 
@@ -166,16 +186,46 @@ void MainCleanup()
   appState.audio.deinit();
 }
 
+float* GetData()
+{
+  if (appState.source == &appState.wav) {
+    return appState.wav.mData;
+  }else if (appState.source == &appState.mod) {
+    return (float*)appState.mod.mData;
+  }
+  return 0;
+}
+
+unsigned int DataLen()
+{
+  if (appState.source == &appState.wav) {
+    return appState.wav.mSampleCount;
+  }else if (appState.source == &appState.mod) {
+    return appState.mod.mDataLen / sizeof(float);
+  }
+  return 0;
+}
+
+float LengthInSeconds()
+{
+  if (appState.source == &appState.wav) {
+    return appState.wav.getLength();
+  }else if (appState.source == &appState.mod) {
+    return appState.mod.getLength();
+  }
+  return 0;
+}
+
 void Seek(float time) {
   appState.playhead = time;
   if (appState.audio_handle) {
     appState.audio.setPause(appState.audio_handle, true);
   }else{
-    appState.audio_handle = appState.audio.play(appState.wav, appState.volume, 0.0f, true);
+    appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
     appState.audio.setLooping(appState.audio_handle, appState.loop);
   }
   appState.audio.seek(appState.audio_handle, appState.playhead);
-  appState.selection_start = appState.wav.mSampleCount * (appState.playhead / appState.wav.getLength());
+  appState.selection_start = DataLen() * (appState.playhead / LengthInSeconds());
 }
 
 bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
@@ -279,13 +329,13 @@ void MainGui()
 
   if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
     appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
-    appState.playhead = fmodf(appState.playhead, appState.wav.getLength());
+    appState.playhead = fmodf(appState.playhead, LengthInSeconds());
   }else{
     appState.audio_handle = 0;
     appState.playhead = 0.0;
   }
   if (playing) {
-    appState.selection_start = appState.wav.mSampleCount * appState.playhead / appState.wav.getLength();
+    appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
     // appState.selection_length = 256;
   }
 
@@ -295,7 +345,7 @@ void MainGui()
     appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
 
-  float duration = appState.wav.getLength();
+  float duration = LengthInSeconds();
   if (ImGui::SliderFloat("Playhead", &appState.playhead, 0.0f, duration)) {
     Seek(appState.playhead);
     playing = false;
@@ -304,7 +354,7 @@ void MainGui()
   // auto size = ImGui::GetItemRectSize();
   float width = ImGui::CalcItemWidth();
 
-  if (false && playing) {
+  if (appState.source == &appState.mod) {
     // this shows the mixed output waveform
     ImGui::PlotLines(
       "Live Waveform",
@@ -319,7 +369,7 @@ void MainGui()
   }else{
     ImGui::PlotConfig plot_config;
     plot_config.frame_size = ImVec2(width, 100);
-    plot_config.values.ys = appState.wav.mData + appState.selection_start;
+    plot_config.values.ys = GetData() + appState.selection_start;
     plot_config.values.count = appState.selection_length;
     plot_config.scale.min = -1.0f;
     plot_config.scale.max = 1.0f;
@@ -358,8 +408,8 @@ void MainGui()
 
   ImGui::PlotConfig plot_config;
   plot_config.frame_size = ImVec2(width, 200);
-  plot_config.values.ys = appState.wav.mData;
-  plot_config.values.count = appState.wav.mSampleCount;
+  plot_config.values.ys = GetData();
+  plot_config.values.count = DataLen();
   plot_config.scale.min = -1.0f;
   plot_config.scale.max = 1.0f;
   plot_config.selection.show = true;
@@ -367,7 +417,7 @@ void MainGui()
   plot_config.selection.length = &appState.selection_length;
   // plot_config.overlay_text = "Hello";
   if (ImGui::Plot("Data", plot_config) == ImGui::PlotStatus::selection_updated) {
-    Seek(appState.selection_start * appState.wav.getLength() / appState.wav.mSampleCount);
+    Seek(appState.selection_start * LengthInSeconds() / DataLen());
     playing = false;
     appState.selection_length = fmax(appState.selection_length, 256);
   }
@@ -389,7 +439,7 @@ void MainGui()
   }
 
   volume = volume * 0.9f + max_sample * 0.1f;
-  peak = fmax(volume, peak * 0.999f);
+  peak = fmax(volume, peak - 0.001f);
 
   size.y *= 0.7f;
   size.x = 90;
@@ -419,7 +469,7 @@ void MainGui()
       if (appState.audio_handle) {
         appState.audio.setPause(appState.audio_handle, false);
       }else{
-        appState.audio_handle = appState.audio.play(appState.wav, appState.volume);
+        appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
         appState.audio.setLooping(appState.audio_handle, appState.loop);
       }
     }
@@ -456,7 +506,7 @@ void MainGui()
   const char* chosenPath = dlg.chooseFileDialog(
     browseButtonPressed,
     dlg.getLastDirectory(),
-    ".wav;.ogg",
+    ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
     "Load Audio File"
   );
   if (strlen(chosenPath)>0) {

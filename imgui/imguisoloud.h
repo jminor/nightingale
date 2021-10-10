@@ -1757,11 +1757,13 @@ namespace SoLoud
 	public:
 		char *mData;
 		unsigned int mDataLen;
+		float mEstimatedDuration;
 		Modplug();
 		virtual ~Modplug();
 		result load(const char* aFilename);
 		result loadMem(unsigned char *aMem, unsigned int aLength, bool aCopy = false, bool aTakeOwnership = true);
 		result loadFile(File *aFile);
+		float getLength();
 		virtual AudioSourceInstance *createInstance();
         static const char* SupportedExtensions;
 	};

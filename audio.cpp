@@ -16,5 +16,6 @@
 #endif
 
 #define YES_IMGUISOLOUD_SPEECH
+#define YES_IMGUISOLOUD_MODPLUG
 
 #include "imguisoloud.cpp"

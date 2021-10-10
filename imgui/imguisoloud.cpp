@@ -7351,11 +7351,17 @@ namespace SoLoud
 			mDataLen = 0;
 			return FILE_LOAD_FAILED;
 		}
+		mEstimatedDuration = ModPlug_GetLength(mpf) / 1000.0f;
 		ModPlug_Unload(mpf);
 		return 0;
 #else
 		return NOT_IMPLEMENTED;
 #endif
+	}
+
+	float Modplug::getLength()
+	{
+		return mEstimatedDuration;
 	}
 
 	Modplug::Modplug()
