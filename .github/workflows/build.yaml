@@ -66,9 +66,21 @@ jobs:
     - name: Build
       run: make -f Makefile.desktop
 
-    - run: |
-        pwd
-        ls -la
+    - name: Check Product
+      run: |
+        ls -l nightingale
+        file nightingale
+
+    - name: Package Product
+      run: |
+        chmod +x nightingale
+        zip -r nightingale-linux.zip nightingale fonts
+
+    - name: Archive Product
+      uses: actions/upload-artifact@v1
+      with:
+        name: nightingale-linux.zip
+        path: nightingale-linux.zip
 
   MacOS:
     runs-on: macOS-latest
@@ -92,7 +104,7 @@ jobs:
     - name: Package Product
       run: |
         chmod +x nightingale
-        zip -r nightingale-mac.zip nightingale
+        zip -r nightingale-mac.zip nightingale fonts
 
     - name: Archive Product
       uses: actions/upload-artifact@v1
