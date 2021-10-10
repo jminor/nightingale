@@ -64,7 +64,7 @@ jobs:
         sudo apt-get install -y libglfw3-dev gcc-multilib g++-multilib libfreetype6-dev libasound2-dev
 
     - name: Build
-      run: make -f Makefile.desktop
+      run: make
 
     - name: Check Product
       run: |
@@ -82,6 +82,39 @@ jobs:
         name: nightingale-linux.zip
         path: nightingale-linux.zip
 
+  Windows Cross-Compile:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libglfw3-dev gcc-multilib g++-multilib libfreetype6-dev libasound2-dev
+        sudo apt-get install gcc-mingw-w64
+        sudo apt-get install g++-mingw-w64-x86-64
+
+    - name: Build
+      run: make XCOMPILE=Windows
+
+    - name: Check Product
+      run: |
+        ls -l nightingale.exe
+        file nightingale.exe
+
+    - name: Package Product
+      run: |
+        chmod +x nightingale.exe
+        zip -r nightingale-win.zip nightingale.exe fonts
+
+    - name: Archive Product
+      uses: actions/upload-artifact@v1
+      with:
+        name: nightingale-win.zip
+        path: nightingale-win.zip
+
   MacOS:
     runs-on: macOS-latest
     steps:
@@ -94,7 +127,7 @@ jobs:
         brew install glfw3
 
     - name: Build
-      run: make -f Makefile.desktop
+      run: make
 
     - name: Check Product
       run: |

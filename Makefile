@@ -71,6 +71,15 @@ ifeq ($(UNAME_S), Darwin) #APPLE
 	CFLAGS = $(CXXFLAGS)
 endif
 
+ifeq ($(XCOMPILE), Windows)
+	ECHO_MESSAGE = "Windows cross-compile"
+	CXX = x86_64-w64-mingw32-g++
+	EXE = $(EXE).exe
+	CXXFLAGS += -I./libs/glfw/include
+	LIBS += -lglfw3 -lgdi32 -lopengl32 -limm32
+	CFLAGS = $(CXXFLAGS)
+endif
+
 ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
 	ECHO_MESSAGE = "MinGW"
 	LIBS += -lglfw3 -lgdi32 -lopengl32 -limm32
@@ -98,7 +107,6 @@ CXXONLYFLAGS = -std=c++11
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 all: $(EXE)
-	@echo Platform is $(UNAME_S)
 	@echo Build complete for $(ECHO_MESSAGE)
 
 $(EXE): $(OBJS)
