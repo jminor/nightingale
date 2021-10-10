@@ -151,6 +151,11 @@ void MainInit()
   appState.audio.setVisualizationEnable(true);
 }
 
+void MainCleanup()
+{
+  appState.audio.deinit();
+}
+
 void Seek(float time) {
   appState.playhead = time;
   if (appState.audio_handle) {

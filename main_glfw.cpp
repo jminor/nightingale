@@ -48,6 +48,7 @@ static void glfw_error_callback(int error, const char* description)
 
 void MainInit();
 void MainGui();
+void MainCleanup();
 
 int main(int, char**)
 {
@@ -190,6 +191,8 @@ int main(int, char**)
 
         glfwSwapBuffers(window);
     }
+
+    MainCleanup();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

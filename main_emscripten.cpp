@@ -21,6 +21,7 @@ SDL_GLContext   g_GLContext = NULL;
 
 void MainInit();
 void MainGui();
+void MainCleanup();
 
 // For clarity, our main loop code is declared at the end.
 void main_loop(void*);
