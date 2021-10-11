@@ -2655,7 +2655,7 @@ bool NodeGraphEditor::load(ImGuiHelper::Deserializer& d, const char ** pOptional
 
 
 
-
+#define IMGUINODEGRAPHEDITOR_NOTESTDEMO
 #ifndef IMGUINODEGRAPHEDITOR_NOTESTDEMO
 
 #ifndef NO_IMGUIFILESYSTEM

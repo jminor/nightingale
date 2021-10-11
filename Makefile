@@ -16,7 +16,7 @@
 
 APP = nightingale
 EXE = $(APP)
-SOURCES = main_glfw.cpp app.cpp audio.cpp
+SOURCES = main_glfw.cpp app.cpp audio.cpp graph.cpp
 SOURCES += imgui/imgui_impl_glfw.cpp imgui/imgui_impl_opengl3.cpp
 SOURCES += imgui/imgui.cpp imgui/imgui_demo.cpp imgui/imgui_draw.cpp imgui/imgui_widgets.cpp
 SOURCES += imgui/imguihelper.cpp imgui/imgui_plot.cpp imgui/imguinodegrapheditor.cpp imgui/imguifilesystem.cpp
@@ -58,7 +58,7 @@ ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
 	LIBS += -lGL `pkg-config --static --libs glfw3` -lasound
 
-	CXXFLAGS += `pkg-config --cflags glfw3` -pthread
+	CXXFLAGS += `pkg-config --cflags glfw3` -pthread -DHAVE_STDINT_H
 	CFLAGS = $(CXXFLAGS)
 endif
 

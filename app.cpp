@@ -16,6 +16,8 @@
 #include <SDL.h>
 #endif
 
+void MyNodeGraphEditor(ImGui::NodeGraphEditor & nge);
+
 // Struct that holds the application's state
 struct AppState
 {
@@ -542,7 +544,7 @@ void MainGui()
     ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
     {
-        ImGui::TestNodeGraphEditor(appState.nge);
+        MyNodeGraphEditor(appState.nge);
     }
     ImGui::End();
   }
