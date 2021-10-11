@@ -18,42 +18,14 @@
 
 void MyNodeGraphEditor(ImGui::NodeGraphEditor & nge);
 
-// Struct that holds the application's state
-struct AppState
-{
-  char file_path[4096];
-  float volume = 1.0f;
-  float playhead = 0.0f;
-  bool loop = false;
-  uint32_t selection_start = 0;
-  uint32_t selection_length = 1000;
-
-  SoLoud::Soloud audio;
-  SoLoud::handle audio_handle;
-
-  SoLoud::AudioSource *source;
-  SoLoud::Speech speech;
-  SoLoud::Wav wav;
-  SoLoud::Modplug mod;
-
-  char speech_text[1024];
-
-  ImGui::NodeGraphEditor nge;
-  
-  bool show_main_window = true;
-  bool show_style_editor = false;
-  bool show_node_graph = true;
-  bool show_demo_window = false;
-};
+#include "app.h"
 
 AppState appState;
-
-
+ImFont *gTechFont = nullptr;
+ImFont *gIconFont = nullptr;
 
 //   Files in the application fonts/ folder are embedded automatically
 //   (on iOS/Android/Emscripten)
-ImFont *gTechFont = nullptr;
-ImFont *gIconFont = nullptr;
 void LoadFonts()
 {
   ImGuiIO& io = ImGui::GetIO();

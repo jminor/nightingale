@@ -1,5 +1,5 @@
-#include "imgui.h"
-#include "imguinodegrapheditor.h"
+
+#include "app.h"
 
 // namespace ImGui	{
 
@@ -202,7 +202,7 @@ class ComplexNode : public Node {
     virtual const char* getInfo() const {return "ComplexNode info.\n\nThis is supposed to display some info about this node.";}
     virtual void getDefaultTitleBarColors(ImU32& defaultTitleTextColorOut,ImU32& defaultTitleBgColorOut,float& defaultTitleBgColorGradientOut) const {
         // [Optional Override] customize Node Title Colors [default values: 0,0,-1.f => do not override == use default values from the Style()]
-        defaultTitleTextColorOut = IM_COL32(220,220,220,255);defaultTitleBgColorOut = IM_COL32(125,35,0,255);defaultTitleBgColorGradientOut = -1.f;
+        // defaultTitleTextColorOut = IM_COL32(220,220,220,255);defaultTitleBgColorOut = IM_COL32(125,35,0,255);defaultTitleBgColorGradientOut = -1.f;
     }
 
     public:
@@ -373,12 +373,19 @@ class OutputNode : public Node {
     static const int TYPE = MNT_OUTPUT_NODE;
 
     // No field values in this class
+    // float volume;
 
-    virtual const char* getTooltip() const {return "OutputNode tooltip.";}
-    virtual const char* getInfo() const {return "OutputNode info.\n\nThis is supposed to display some info about this node.";}
+    virtual const char* getTooltip() const {
+        return "OutputNode";
+    }
+    virtual const char* getInfo() const {
+        return "OutputNode: Audio coming into this node goes to your speakers.";
+    }
     virtual void getDefaultTitleBarColors(ImU32& defaultTitleTextColorOut,ImU32& defaultTitleBgColorOut,float& defaultTitleBgColorGradientOut) const {
         // [Optional Override] customize Node Title Colors [default values: 0,0,-1.f => do not override == use default values from the Style()]
-        defaultTitleTextColorOut = IM_COL32(230,180,180,255);defaultTitleBgColorOut = IM_COL32(40,55,55,200);defaultTitleBgColorGradientOut = 0.025f;
+        defaultTitleTextColorOut = IM_COL32_BLACK;
+        defaultTitleBgColorOut = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
+        // defaultTitleBgColorGradientOut = 1.0f;
     }
     virtual bool canBeCopied() const {return false;}
 
@@ -392,11 +399,21 @@ class OutputNode : public Node {
     ThisClass* node = (ThisClass*) ImGui::MemAlloc(sizeof(ThisClass));IM_PLACEMENT_NEW (node) ThisClass();
 
         // 2) main init
-        node->init("OutputNode",pos,"ch1;ch2;ch3;ch4","",TYPE);
+        node->init("OutputNode",pos,"in1;in2;in3;in4","",TYPE);
 
         // 3) init fields ( this uses the node->fields variable; otherwise we should have overridden other virtual methods (to render and serialize) )
+        // node->fields.addField(
+        //     &node->volume,
+        //     1, // numArrayElements
+        //     "Volume",
+        //     "Global output volume",
+        //     2, // precision
+        //     0, // lower
+        //     1  // upper
+        // );
 
         // 4) set (or load) field values
+        // node->volume = appState.audio.getGlobalVolume();
 
         return node;
     }
@@ -407,7 +424,24 @@ class OutputNode : public Node {
 
     protected:
     bool render(float /*nodeWidth*/)   {
-        ImGui::Text("There can be a single\ninstance of this class.\nTry and see if it's true!");
+        // ImGui::Text("There can be a single\ninstance of this class.\nTry and see if it's true!");
+
+        if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
+            appState.audio.setVolume(appState.audio_handle, appState.volume);
+        }
+
+        ImGui::PlotLines(
+            "##Live Waveform",
+            appState.audio.getWave(),
+            256,  // values_count
+            0,    // values_offset
+            nullptr, // overlay_text
+            -1.0f, // scale_min
+            1.0f, // scale_max
+            ImVec2(200,100) // graph_size
+        );
+
+
         return false;
     }
 };
@@ -440,8 +474,8 @@ void MyNodeGraphEditor(ImGui::NodeGraphEditor & nge)  {
         // Optional: starting nodes and links (TODO: load from file instead):-----------
         ImGui::Node* colorNode = nge.addNode(MNT_COLOR_NODE,ImVec2(40,50));
         ImGui::Node* complexNode =  nge.addNode(MNT_COMPLEX_NODE,ImVec2(40,150));
-        ImGui::Node* combineNode =  nge.addNode(MNT_COMBINE_NODE,ImVec2(275,80)); // optionally use e.g.: ImGui::CombineNode::Cast(combineNode)->fraction = 0.8f;
-        ImGui::Node* outputNode =  nge.addNode(MNT_OUTPUT_NODE,ImVec2(520,140));
+        ImGui::Node* combineNode =  nge.addNode(MNT_COMBINE_NODE,ImVec2(325,80)); // optionally use e.g.: ImGui::CombineNode::Cast(combineNode)->fraction = 0.8f;
+        ImGui::Node* outputNode =  nge.addNode(MNT_OUTPUT_NODE,ImVec2(620,140));
         // Return values can be NULL (if node types are not registered or their instance limit has been already reached).
         //nge.overrideNodeName(combineNode,"CombineNodeCustomName");  // Test only (to remove)
         //nge.overrideNodeInputSlots(combineNode,"in1;in2;in3;in4");  // Test only (to remove)
@@ -457,8 +491,12 @@ void MyNodeGraphEditor(ImGui::NodeGraphEditor & nge)  {
         //-------------------------------------------------------------------------------
         nge.show_style_editor = true;
         nge.show_load_save_buttons = true;
+        nge.show_node_copy_paste_buttons = false;
+        // ImGui::NodeGraphEditor::CloseCopyPasteChars[0] = strdup("X");
+        // ImGui::NodeGraphEditor::CloseCopyPasteChars[1] = strdup("C");
+        // ImGui::NodeGraphEditor::CloseCopyPasteChars[2] = strdup("P");
         // optional load the style (for all the editors: better call it in InitGL()):
-        ImGui::NodeGraphEditor::Style::Load(ImGui::NodeGraphEditor::GetStyle(),"nodeGraphEditor.nge.style");
+        // ImGui::NodeGraphEditor::Style::Load(ImGui::NodeGraphEditor::GetStyle(),"nodeGraphEditor.nge.style");
         //--------------------------------------------------------------------------------
     }
     nge.render();
