@@ -175,6 +175,10 @@ void MainInit()
 
   LoadFonts();
 
+#ifndef __EMSCRIPTEN__
+  ImGui::NodeGraphEditor::Style::Load(ImGui::NodeGraphEditor::GetStyle(),"nodeGraphEditor.nge.style");
+#endif
+
   auto err = appState.audio.init();
   if (err) {
     fprintf(stderr, "Failed to load initialize audio: %s\n", appState.audio.getErrorString(err));
