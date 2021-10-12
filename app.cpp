@@ -147,7 +147,7 @@ void MainInit()
 
   LoadFonts();
 
-#ifndef __EMSCRIPTEN__
+#ifndef EMSCRIPTEN
   ImGui::NodeGraphEditor::Style::Load(ImGui::NodeGraphEditor::GetStyle(),"nodeGraphEditor.nge.style");
 #endif
 
