@@ -685,7 +685,9 @@ void NodeGraphEditor::render()
 
     }
 
-    const bool isMouseDraggingForScrolling = ImGui::IsMouseDragging(2, 0.0f);
+    // Hold SPACE key to pan with left mouse (for trackpads, touch screens, etc.)
+    const bool isPanKeyHeld = ImGui::IsKeyDown(ImGui::GetIO().KeyMap[ImGuiKey_Space]);
+    const bool isMouseDraggingForScrolling = ImGui::IsMouseDragging(isPanKeyHeld ? 0 : 2, 0.0f);
 
     if (ImGui::BeginChild("GraphNodeChildWindow", ImVec2(0,0), true))   {
 
