@@ -1376,7 +1376,7 @@ template <typename CharType> bool FileGetContentBase(const char* path,ImVector<C
 #   else //IMGUI_USE_MINIZIP
     strcpy(mainPath,path);
 #   endif //IMGUI_USE_MINIZIP
-    FILE* fin = ImFileOpen(mainPath,openInTextMode?"rt":"rb");
+    FILE* fin = (FILE*)ImFileOpen(mainPath,openInTextMode?"rt":"rb");
     if (!fin) return false;
     fseek(fin,0,SEEK_END);
     const long szl = ftell(fin);

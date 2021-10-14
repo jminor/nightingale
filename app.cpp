@@ -30,10 +30,16 @@ void LoadFonts()
 {
   ImGuiIO& io = ImGui::GetIO();
 
+  // TODO: Use ImGuiFontStudio to bundle these fonts into the executable.
+#ifdef EMSCRIPTEN
+  fprintf(stderr, "Skipping font loading on EMSCRIPTEN platform.\n");
+  gTechFont = io.Fonts->AddFontDefault();
+  gIconFont = gTechFont;
+#else
   gTechFont = io.Fonts->AddFontFromFileTTF("fonts/ShareTechMono-Regular.ttf", 20.0f);
-
   static const ImWchar icon_fa_ranges[] = { 0xF000, 0xF18B, 0 };
   gIconFont = io.Fonts->AddFontFromFileTTF("fonts/fontawesome-webfont.ttf", 20.0f, NULL, icon_fa_ranges);
+#endif
 }
 
 void Style_Mono()
@@ -47,6 +53,9 @@ void Style_Mono()
   style.WindowBorderSize = 1;
   style.FrameBorderSize = 1;
 
+  // Based on this theme by enemymouse:
+  // https://github.com/ocornut/imgui/issues/539#issuecomment-204412632
+  // https://gist.github.com/enemymouse/c8aa24e247a1d7b9fc33d45091cbb8f0
   ImVec4* colors = style.Colors;
   colors[ImGuiCol_Text]                   = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
   colors[ImGuiCol_TextDisabled]           = ImVec4(0.00f, 0.40f, 0.41f, 1.00f);
