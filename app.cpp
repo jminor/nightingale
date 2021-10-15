@@ -10,6 +10,8 @@
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
+
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
 #ifdef HELLOIMGUI_USE_SDL_OPENGL3
@@ -17,6 +19,7 @@
 #endif
 
 void MyNodeGraphEditor(ImGui::NodeGraphEditor & nge);
+void DrawAudioPanel();
 
 #include "app.h"
 
@@ -294,23 +297,100 @@ void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
   );
 }
 
+bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f)
+{
+    using namespace ImGui;
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = g.CurrentWindow;
+    ImGuiID id = window->GetID("##Splitter");
+    ImRect bb;
+    bb.Min = window->DC.CursorPos + (split_vertically ? ImVec2(*size1, 0.0f) : ImVec2(0.0f, *size1));
+    bb.Max = bb.Min + CalcItemSize(split_vertically ? ImVec2(thickness, splitter_long_axis_size) : ImVec2(splitter_long_axis_size, thickness), 0.0f, 0.0f);
+    return ImGui::SplitterBehavior(
+      bb,
+      id,
+      split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, 
+      size1, 
+      size2, 
+      min_size1, 
+      min_size2, 
+      0.0f,   // hover_extend
+      0.0f    // hover_visibility_delay
+      );
+}
+
 void MainGui()
 {
   ImGuiStyle& style = ImGui::GetStyle();
 
   ImGuiIO& io = ImGui::GetIO();
-  // ImGui::SetNextWindowPos(ImVec2(0,0));
-  ImVec2 winSize = io.DisplaySize;
-  ImGui::SetNextWindowSize(winSize, ImGuiCond_FirstUseEver);
+  ImVec2 displaySize = io.DisplaySize;
+  if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
+    ImGui::SetNextWindowSize(displaySize, ImGuiCond_FirstUseEver);
+  }else{
+    ImGui::SetNextWindowPos(ImVec2(0,0));
+    ImGui::SetNextWindowSize(displaySize);
+  }
 
   ImGui::Begin(
       "Nightingale",
-      &appState.show_main_window
+      &appState.show_main_window,
+      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDocking
       );
 
   if (!appState.show_main_window) {
     exit(0);
   }
+
+  float splitter_size = 8.0f;
+  float w = displaySize.x - splitter_size - style.WindowPadding.x * 2;
+  float h = displaySize.y - style.WindowPadding.y * 2;
+  static float sz1 = 0;
+  static float sz2 = 0;
+  if (sz1 + sz2 != w) {
+    float delta = (sz1 + sz2) - w;
+    sz1 -= delta / 2;
+    sz2 -= delta / 2;
+  }
+  Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h);
+  ImGui::BeginChild("1", ImVec2(sz1, h), true);
+
+  DrawAudioPanel();
+
+  ImGui::EndChild();
+  ImGui::SameLine();
+  ImGui::BeginChild("2", ImVec2(sz2, h), true);
+
+  // if (appState.show_node_graph) {
+  //   ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
+  //   if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
+  //   {
+  //       MyNodeGraphEditor(appState.nge);
+  //   }
+  //   ImGui::End();
+  // }
+  // DrawNodeGraph();
+  MyNodeGraphEditor(appState.nge);
+
+  ImGui::EndChild();
+
+  ImGui::End();
+
+  if (appState.show_demo_window) {
+    ImGui::ShowDemoWindow();
+  }
+
+  if (appState.show_style_editor) {
+    if (ImGui::Begin("Style Editor", &appState.show_style_editor)) {
+      ImGui::ShowStyleEditor();
+    }
+    ImGui::End();
+  }
+}
+
+void DrawAudioPanel()
+{
+  ImGuiStyle& style = ImGui::GetStyle();
 
   bool playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
 
@@ -521,26 +601,6 @@ void MainGui()
     appState.show_demo_window = !appState.show_demo_window;
   }
 
-  if (appState.show_demo_window) {
-    ImGui::ShowDemoWindow();
-  }
-
-  if (appState.show_node_graph) {
-    ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
-    {
-        MyNodeGraphEditor(appState.nge);
-    }
-    ImGui::End();
-  }
-
-  if (appState.show_style_editor) {
-    if (ImGui::Begin("Style Editor", &appState.show_style_editor)) {
-      ImGui::ShowStyleEditor();
-    }
-    ImGui::End();
-  }
-
   ImGui::Spacing();
 
   if (strlen(appState.file_path)>0) {
@@ -570,8 +630,6 @@ void MainGui()
   }
 
   ImGui::PopItemWidth();
-
-  ImGui::End();
 }
 
 // int main(int, char **)
