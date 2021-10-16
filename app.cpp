@@ -170,6 +170,8 @@ void MainInit()
   }
   LoadAudio(""); ///Users/jminor/Library/Mobile Documents/com~apple~CloudDocs/Sokpop Sources/sokpop-source 5/nosoksky.gmx/sound/audio/sou_radio_fragment5.wav");
   appState.audio.setVisualizationEnable(true);
+
+  snprintf(appState.speech_text, sizeof(appState.speech_text), "I like to eat noodles.");
 }
 
 void MainCleanup()
@@ -242,6 +244,8 @@ float qqq(float v) {
 
 void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
 {
+  ImGui::SetCursorPos(pos);
+  ImGui::Dummy(size);
   ImGuiStyle& style = ImGui::GetStyle();
   ImGuiWindow* window = ImGui::GetCurrentWindow();
   ImDrawList *dl = window->DrawList;
@@ -298,7 +302,7 @@ void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
   );
 }
 
-bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f)
+bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f, float hover_extend=0.0f)
 {
     using namespace ImGui;
     ImGuiContext& g = *GImGui;
@@ -315,9 +319,138 @@ bool Splitter(bool split_vertically, float thickness, float* size1, float* size2
       size2, 
       min_size1, 
       min_size2, 
-      0.0f,   // hover_extend
+      hover_extend,
       0.0f    // hover_visibility_delay
       );
+}
+
+float limit(float t, float small, float big)
+{
+  return fmin(fmax(t, small), big);
+}
+
+void DrawEye(ImVec2 size)
+{
+  float eye_roundness = 30.0f;
+  // ImGui::Text("EYE");
+  ImGui::InvisibleButton("##Eye", size);
+  //ImGui::Dummy(size);
+
+  ImVec2 pos = ImGui::GetItemRectMin();
+  // ImVec2 size = ImGui::GetItemRectSize();
+
+  ImGuiStyle& style = ImGui::GetStyle();
+  ImGuiWindow* window = ImGui::GetCurrentWindow();
+  ImDrawList *dl = window->DrawList;
+  // ImGui::PushStyleVar(ImGuiStyleVar_)
+    style.CurveTessellationTol = 0.50f;
+    style.CircleSegmentMaxError = 1.0f;
+  dl->AddRect(
+    pos,
+    pos + size,
+    // ImVec2(
+    //   pos.x + size.x,
+    //   pos.y + size.y
+    // ),
+    ImGui::GetColorU32(ImGuiCol_Border),
+    eye_roundness,
+    ImDrawCornerFlags_All,
+    5
+  );
+
+  ImGuiIO &io = ImGui::GetIO();
+  ImVec2 center = pos + size/2;
+  ImVec2 delta = (io.MousePos - center) / 3;
+  float lim = 5;
+  ImVec2 offset = ImVec2(
+    limit(delta.x, -size.x/lim, size.x/lim),
+    limit(delta.y, -size.y/lim, size.y/lim));
+
+  dl->AddCircleFilled(
+    pos + size/2 + offset,
+    size.x/4,
+    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    -1
+    );
+  dl->AddCircleFilled(
+    pos + size/2 + offset,
+    size.x/8,
+    IM_COL32_BLACK,
+    -1
+    );
+
+}
+
+void DrawFace()
+{
+  ImGuiStyle& style = ImGui::GetStyle();
+
+  // bool playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
+
+  float width = ImGui::CalcItemWidth();
+  ImGui::PushItemWidth(width/2);
+  DrawEye(ImVec2(width/2, width/2));
+  ImGui::SameLine();
+  DrawEye(ImVec2(width/2, width/2));
+  ImGui::PopItemWidth();
+
+  if (true) {
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32_BLACK);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 25);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5);
+    ImGui::PlotLines(
+      "##Live Waveform",
+      appState.audio.getWave(),
+      256,  // values_count
+      0,    // values_offset
+      nullptr, // overlay_text
+      -1.0f, // scale_min
+      1.0f, // scale_max
+      ImVec2(width,75) // graph_size
+      );
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+  }else{
+    ImGui::PlotHistogram(
+      "##FFT",
+      appState.audio.calcFFT(),
+      256,  // values_count
+      0,    // values_offset
+      nullptr, // overlay_text
+      FLT_MAX, // scale_min
+      FLT_MAX, // scale_max
+      ImVec2(width,100) // graph_size
+      );
+  }
+
+  ImGui::Spacing();
+
+  int num_buttons = 7;
+  ImVec2 button_size(
+    (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
+    ImGui::GetTextLineHeight()*2
+  );
+
+  ImGui::PushItemWidth(-100 - button_size.x - style.ItemSpacing.x);
+
+  if (ImGui::InputTextWithHint(
+    "##Speak",
+    "Type something here",
+    appState.speech_text,
+    sizeof(appState.speech_text),
+    ImGuiInputTextFlags_EnterReturnsTrue
+    )) {
+    LoadSpeech(appState.speech_text);
+  }
+
+  ImGui::SameLine();
+
+  if (IconButton("\uF075##Speak", ImVec2(button_size.x, ImGui::GetItemRectSize().y))) {
+    LoadSpeech(appState.speech_text);
+  }
+
+  ImGui::PopItemWidth();
 }
 
 void MainGui()
@@ -343,7 +476,7 @@ void MainGui()
     exit(0);
   }
 
-  float splitter_size = 8.0f;
+  float splitter_size = 2.0f;
   float w = displaySize.x - splitter_size - style.WindowPadding.x * 2;
   float h = displaySize.y - style.WindowPadding.y * 2;
   static float sz1 = 0;
@@ -353,7 +486,7 @@ void MainGui()
     sz1 -= delta / 2;
     sz2 -= delta / 2;
   }
-  Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h);
+  Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h, 8);
   ImGui::BeginChild("1", ImVec2(sz1, h), true);
 
   DrawAudioPanel();
@@ -362,16 +495,31 @@ void MainGui()
   ImGui::SameLine();
   ImGui::BeginChild("2", ImVec2(sz2, h), true);
 
-  // if (appState.show_node_graph) {
-  //   ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
-  //   if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
-  //   {
-  //       MyNodeGraphEditor(appState.nge);
-  //   }
-  //   ImGui::End();
-  // }
-  // DrawNodeGraph();
-  MyNodeGraphEditor(appState.nge);
+  if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None))
+  {
+    if (ImGui::BeginTabItem("Face"))
+    {
+      DrawFace();
+
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Node Graph"))
+    {
+      // if (appState.show_node_graph) {
+      //   ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
+      //   if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
+      //   {
+      //       MyNodeGraphEditor(appState.nge);
+      //   }
+      //   ImGui::End();
+      // }
+      // DrawNodeGraph();
+      MyNodeGraphEditor(appState.nge);
+
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
 
   ImGui::EndChild();
 
@@ -510,7 +658,7 @@ void DrawAudioPanel()
   peak = fmax(volume, peak - 0.001f);
 
   size.y *= 0.7f;
-  size.x = 90;
+  size.x = 85;
   DrawVolumeMeter(
     ImVec2(
       corner.x + style.ItemSpacing.x,
