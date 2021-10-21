@@ -4,9 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define YES_IMGUISOLOUD_ALL
+#define YES_IMGUISOLOUD_MODPLUG
 #include "imguisoloud.h"
-#include "imguinodegrapheditor.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -18,7 +17,6 @@
 #include <SDL.h>
 #endif
 
-void MyNodeGraphEditor(ImGui::NodeGraphEditor & nge);
 void DrawAudioPanel();
 
 #include "app.h"
@@ -26,6 +24,24 @@ void DrawAudioPanel();
 AppState appState;
 ImFont *gTechFont = nullptr;
 ImFont *gIconFont = nullptr;
+
+void Log(const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  fprintf(stderr, "LOG: ");
+  fprintf(stderr, format, args);
+  va_end(args);
+}
+
+void Message(const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(appState.message, sizeof(appState.message), format, args);
+  va_end(args);
+  Log(appState.message);
+}
 
 //   Files in the application fonts/ folder are embedded automatically
 //   (on iOS/Android/Emscripten)
@@ -35,7 +51,7 @@ void LoadFonts()
 
   // TODO: Use ImGuiFontStudio to bundle these fonts into the executable.
 #ifdef EMSCRIPTEN
-  fprintf(stderr, "Skipping font loading on EMSCRIPTEN platform.\n");
+  Log("Skipping font loading on EMSCRIPTEN platform.");
   gTechFont = io.Fonts->AddFontDefault();
   gIconFont = gTechFont;
 #else
@@ -113,20 +129,6 @@ void Style_Mono()
   colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
 }
 
-void LoadSpeech(const char* text)
-{
-  appState.speech.setText(text);
-  appState.audio_handle = appState.audio.play(appState.speech);
-  // printf("speech mFrames = %d\n", speech.mFrames);
-  // printf("speech mElement size = %d\n", speech.mElement.getSize());
-  // auto instance = (SoLoud::SpeechInstance*)speech.createInstance();
-  // printf("speech instance.mSampleCount = %d\n", instance->mSampleCount);
-  // printf("speech mElement size = %d\n", speech.mElement.getSize());
-  // float* buffer = (float*)malloc(instance->mSampleCount*sizeof(float));
-  // instance->getAudio(buffer, instance->mSampleCount);
-  // appState.wav()
-}
-
 void LoadAudio(const char* path)
 {
   strncpy(appState.file_path, path, sizeof(appState.file_path));
@@ -136,21 +138,15 @@ void LoadAudio(const char* path)
     err = appState.wav.load(path);
     if (!err) {
       appState.source = &appState.wav;
-      fprintf(stderr, "Loaded file: %s\n", path);
-      fprintf(stderr, "mSampleCount: %d\n", appState.wav.mSampleCount);
-      fprintf(stderr, "duration: %f\n", appState.wav.getLength());
     }
   }else{
     err = appState.mod.load(path);
     if (!err) {
       appState.source = &appState.mod;
-      fprintf(stderr, "Loaded file: %s\n", path);
-      fprintf(stderr, "mDataLen: %d\n", appState.mod.mDataLen);
-      fprintf(stderr, "duration: %f\n", appState.mod.getLength());
     }
   }
   if (err) {
-    fprintf(stderr, "Failed to load file: %s: %s\n", appState.audio.getErrorString(err), path);
+    Message("Failed to load file: %s: %s", appState.audio.getErrorString(err), path);
   }
 }
 
@@ -160,18 +156,12 @@ void MainInit()
 
   LoadFonts();
 
-#ifndef EMSCRIPTEN
-  ImGui::NodeGraphEditor::Style::Load(ImGui::NodeGraphEditor::GetStyle(),"nodeGraphEditor.nge.style");
-#endif
-
-  auto err = appState.audio.init();
+  SoLoud::result err = appState.audio.init();
   if (err) {
-    fprintf(stderr, "Failed to load initialize audio: %s\n", appState.audio.getErrorString(err));
+    Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
   }
-  LoadAudio(""); ///Users/jminor/Library/Mobile Documents/com~apple~CloudDocs/Sokpop Sources/sokpop-source 5/nosoksky.gmx/sound/audio/sou_radio_fragment5.wav");
+  // LoadAudio(""); ///Users/jminor/Library/Mobile Documents/com~apple~CloudDocs/Sokpop Sources/sokpop-source 5/nosoksky.gmx/sound/audio/sou_radio_fragment5.wav");
   appState.audio.setVisualizationEnable(true);
-
-  snprintf(appState.speech_text, sizeof(appState.speech_text), "I like to eat noodles.");
 }
 
 void MainCleanup()
@@ -242,19 +232,21 @@ float qqq(float v) {
   return 1.0f - (1.0f - v) * (1.0f - v);
 }
 
-void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
+void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
 {
-  ImGui::SetCursorPos(pos);
-  ImGui::Dummy(size);
+  ImVec2 pos = ImGui::GetCursorPos();
+  ImGuiIO& io = ImGui::GetIO();
+  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    pos += ImGui::GetWindowPos();
+  }
+  ImGui::InvisibleButton(label, size);
+
   ImGuiStyle& style = ImGui::GetStyle();
   ImGuiWindow* window = ImGui::GetCurrentWindow();
   ImDrawList *dl = window->DrawList;
   dl->AddRect(
     pos,
-    ImVec2(
-      pos.x + size.x,
-      pos.y + size.y
-    ),
+    pos + size,
     ImGui::GetColorU32(ImGuiCol_Border),
     style.FrameRounding
   );
@@ -276,10 +268,7 @@ void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
       pos.x,
       pos.y + size.y * (1.0 - peak)
     ),
-    ImVec2(
-      pos.x + size.x,
-      pos.y + size.y
-    ),
+    pos + size,
     peak_color,
     peak_color,
     base_color,
@@ -291,10 +280,7 @@ void DrawVolumeMeter(ImVec2 pos, ImVec2 size, float volume, float peak)
       pos.x,
       pos.y + size.y * (1.0 - volume)
     ),
-    ImVec2(
-      pos.x + size.x,
-      pos.y + size.y
-    ),
+    pos + size,
     volume_color,
     volume_color,
     base_color,
@@ -329,130 +315,6 @@ float limit(float t, float small, float big)
   return fmin(fmax(t, small), big);
 }
 
-void DrawEye(ImVec2 size)
-{
-  float eye_roundness = 30.0f;
-  // ImGui::Text("EYE");
-  ImGui::InvisibleButton("##Eye", size);
-  //ImGui::Dummy(size);
-
-  ImVec2 pos = ImGui::GetItemRectMin();
-  // ImVec2 size = ImGui::GetItemRectSize();
-
-  ImGuiStyle& style = ImGui::GetStyle();
-  ImGuiWindow* window = ImGui::GetCurrentWindow();
-  ImDrawList *dl = window->DrawList;
-  // ImGui::PushStyleVar(ImGuiStyleVar_)
-    style.CurveTessellationTol = 0.50f;
-    style.CircleSegmentMaxError = 1.0f;
-  dl->AddRect(
-    pos,
-    pos + size,
-    // ImVec2(
-    //   pos.x + size.x,
-    //   pos.y + size.y
-    // ),
-    ImGui::GetColorU32(ImGuiCol_Border),
-    eye_roundness,
-    ImDrawCornerFlags_All,
-    5
-  );
-
-  ImGuiIO &io = ImGui::GetIO();
-  ImVec2 center = pos + size/2;
-  ImVec2 delta = (io.MousePos - center) / 3;
-  float lim = 5;
-  ImVec2 offset = ImVec2(
-    limit(delta.x, -size.x/lim, size.x/lim),
-    limit(delta.y, -size.y/lim, size.y/lim));
-
-  dl->AddCircleFilled(
-    pos + size/2 + offset,
-    size.x/4,
-    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
-    -1
-    );
-  dl->AddCircleFilled(
-    pos + size/2 + offset,
-    size.x/8,
-    IM_COL32_BLACK,
-    -1
-    );
-
-}
-
-void DrawFace()
-{
-  ImGuiStyle& style = ImGui::GetStyle();
-
-  // bool playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
-
-  float width = ImGui::CalcItemWidth();
-  ImGui::PushItemWidth(width/2);
-  DrawEye(ImVec2(width/2, width/2));
-  ImGui::SameLine();
-  DrawEye(ImVec2(width/2, width/2));
-  ImGui::PopItemWidth();
-
-  if (true) {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32_BLACK);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 25);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5);
-    ImGui::PlotLines(
-      "##Live Waveform",
-      appState.audio.getWave(),
-      256,  // values_count
-      0,    // values_offset
-      nullptr, // overlay_text
-      -1.0f, // scale_min
-      1.0f, // scale_max
-      ImVec2(width,75) // graph_size
-      );
-    ImGui::PopStyleVar();
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
-  }else{
-    ImGui::PlotHistogram(
-      "##FFT",
-      appState.audio.calcFFT(),
-      256,  // values_count
-      0,    // values_offset
-      nullptr, // overlay_text
-      FLT_MAX, // scale_min
-      FLT_MAX, // scale_max
-      ImVec2(width,100) // graph_size
-      );
-  }
-
-  ImGui::Spacing();
-
-  int num_buttons = 7;
-  ImVec2 button_size(
-    (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
-    ImGui::GetTextLineHeight()*2
-  );
-
-  ImGui::PushItemWidth(-100 - button_size.x - style.ItemSpacing.x);
-
-  if (ImGui::InputTextWithHint(
-    "##Speak",
-    "Type something here",
-    appState.speech_text,
-    sizeof(appState.speech_text),
-    ImGuiInputTextFlags_EnterReturnsTrue
-    )) {
-    LoadSpeech(appState.speech_text);
-  }
-
-  ImGui::SameLine();
-
-  if (IconButton("\uF075##Speak", ImVec2(button_size.x, ImGui::GetItemRectSize().y))) {
-    LoadSpeech(appState.speech_text);
-  }
-
-  ImGui::PopItemWidth();
-}
-
 void MainGui()
 {
   ImGuiStyle& style = ImGui::GetStyle();
@@ -469,16 +331,24 @@ void MainGui()
   ImGui::Begin(
       "Nightingale",
       &appState.show_main_window,
-      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDocking
+      // ImGuiWindowFlags_NoResize |
+      // ImGuiWindowFlags_NoMove |
+      // ImGuiWindowFlags_NoTitleBar | 
+      // ImGuiWindowFlags_NoBringToFrontOnFocus | 
+      // ImGuiWindowFlags_NoDocking
+      // ImGuiWindowFlags_AlwaysAutoResize
+      0
       );
 
   if (!appState.show_main_window) {
     exit(0);
   }
 
+  ImVec2 windowSize = ImGui::GetWindowSize();
+
   float splitter_size = 2.0f;
-  float w = displaySize.x - splitter_size - style.WindowPadding.x * 2;
-  float h = displaySize.y - style.WindowPadding.y * 2;
+  float w = windowSize.x - splitter_size - style.WindowPadding.x * 2;
+  float h = windowSize.y - style.WindowPadding.y * 2;
   static float sz1 = 0;
   static float sz2 = 0;
   if (sz1 + sz2 != w) {
@@ -497,24 +367,15 @@ void MainGui()
 
   if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None))
   {
-    if (ImGui::BeginTabItem("Face"))
+    if (ImGui::BeginTabItem("Nothing"))
     {
-      DrawFace();
+      ImGui::Text("This space intentionally left blank.");
 
       ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Node Graph"))
+    if (ImGui::BeginTabItem("Theme"))
     {
-      // if (appState.show_node_graph) {
-      //   ImGui::SetNextWindowSize(ImVec2(700,600), ImGuiCond_FirstUseEver);
-      //   if (ImGui::Begin("Audio Node Graph", &appState.show_node_graph))
-      //   {
-      //       MyNodeGraphEditor(appState.nge);
-      //   }
-      //   ImGui::End();
-      // }
-      // DrawNodeGraph();
-      MyNodeGraphEditor(appState.nge);
+      ImGui::ShowStyleEditor();
 
       ImGui::EndTabItem();
     }
@@ -528,18 +389,12 @@ void MainGui()
   if (appState.show_demo_window) {
     ImGui::ShowDemoWindow();
   }
-
-  if (appState.show_style_editor) {
-    if (ImGui::Begin("Style Editor", &appState.show_style_editor)) {
-      ImGui::ShowStyleEditor();
-    }
-    ImGui::End();
-  }
 }
 
 void DrawAudioPanel()
 {
   ImGuiStyle& style = ImGui::GetStyle();
+  ImGuiIO& io = ImGui::GetIO();
 
   bool playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
 
@@ -640,6 +495,9 @@ void DrawAudioPanel()
 
   ImVec2 size = ImGui::GetItemRectSize();
   ImVec2 corner = ImGui::GetItemRectMax();
+  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    corner -= ImGui::GetWindowPos();
+  }
 
   ImGui::SameLine();
   ImGui::Text("Waveform\nFull");
@@ -657,13 +515,18 @@ void DrawAudioPanel()
   volume = volume * 0.9f + max_sample * 0.1f;
   peak = fmax(volume, peak - 0.001f);
 
+  // ImGui::SetCursorPos(
+  //   ImVec2(
+  //     corner.x + style.ItemSpacing.x,
+  //     corner.y - size.y
+  //   )
+  // );
+
   size.y *= 0.7f;
   size.x = 85;
+
   DrawVolumeMeter(
-    ImVec2(
-      corner.x + style.ItemSpacing.x,
-      corner.y - size.y
-    ),
+    "Audio Meter",
     size,
     volume,
     peak
@@ -673,7 +536,7 @@ void DrawAudioPanel()
   // ImGui::Text("%f dB", dB);
 
 
-  int num_buttons = 7;
+  int num_buttons = 5;
   ImVec2 button_size(
     (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
     ImGui::GetTextLineHeight()*2
@@ -702,18 +565,20 @@ void DrawAudioPanel()
   }
 
   ImGui::SameLine();
-  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, appState.loop ? 4 : 1);
-  // ImGui::PushStyleColor(ImGuiCol_Border, style.Colors[ImGuiCol_ButtonActive]);
+  ImGui::PushStyleVar(
+    ImGuiStyleVar_FrameBorderSize, 
+    appState.loop ? 2 : 1
+    );
+  ImGui::PushStyleColor(
+    ImGuiCol_Border, 
+    style.Colors[appState.loop ? ImGuiCol_NavHighlight : ImGuiCol_Border]
+    );
   if (IconButton("\uF021##Loop", button_size)) {
     appState.loop = !appState.loop;
     appState.audio.setLooping(appState.audio_handle, appState.loop);
   }
-  // ImGui::PopStyleColor();
+  ImGui::PopStyleColor();
   ImGui::PopStyleVar();
-
-  // ##Cut
-  // ##Copy
-  // #Paste or 
 
   ImGui::SameLine();
 
@@ -728,77 +593,27 @@ void DrawAudioPanel()
   if (strlen(chosenPath)>0) {
     LoadAudio(chosenPath);
   }
-  // if (strlen(dlg.getChosenPath())>0) {
-  //     ImGui::Text("Chosen file: \"%s\"",dlg.getChosenPath());
+  ImGui::SameLine();
+
+  // if (IconButton("\uF074##NodeGraph", button_size)) {
+  //   appState.show_node_graph = !appState.show_node_graph;
   // }
+  // ImGui::SameLine();
 
-  ImGui::SameLine();
-
-  if (IconButton("\uF074##NodeGraph", button_size)) {
-    appState.show_node_graph = !appState.show_node_graph;
-  }
-
-  ImGui::SameLine();
-
-  if (IconButton("\uF0AE##Style", button_size)) {
-    appState.show_style_editor = !appState.show_style_editor;
-  }
-
-  ImGui::SameLine();
+  // if (IconButton("\uF0AE##Style", button_size)) {
+  //   appState.show_style_editor = !appState.show_style_editor;
+  // }
+  // ImGui::SameLine();
 
   if (IconButton("\uF013#Demo", button_size)) {
     appState.show_demo_window = !appState.show_demo_window;
   }
-
   ImGui::Spacing();
 
-  if (strlen(appState.file_path)>0) {
-    ImGui::Text("%s", appState.file_path);
-  }else{
-    ImGui::Text("No file loaded.");
-  }
-
-  ImGui::Spacing();
-
-  ImGui::PushItemWidth(-100 - button_size.x - style.ItemSpacing.x);
-
-  if (ImGui::InputTextWithHint(
-    "##Speak",
-    "Type something here",
-    appState.speech_text,
-    sizeof(appState.speech_text),
-    ImGuiInputTextFlags_EnterReturnsTrue
-    )) {
-    LoadSpeech(appState.speech_text);
-  }
-
-  ImGui::SameLine();
-
-  if (IconButton("\uF075##Speak", ImVec2(button_size.x, ImGui::GetItemRectSize().y))) {
-    LoadSpeech(appState.speech_text);
-  }
-
-  ImGui::PopItemWidth();
+  // if (strlen(appState.file_path)>0) {
+  //   ImGui::Text("%s", appState.file_path);
+  // }else{
+  //   ImGui::Text("No file loaded.");
+  // }
+  ImGui::Text("%s", appState.message);
 }
-
-// int main(int, char **)
-// {
-//   HelloImGui::RunnerParams runnerParams;
-
-//   runnerParams.appWindowParams.windowTitle = "Nightingale";
-//   runnerParams.imGuiWindowParams.defaultImGuiWindowType =
-//   HelloImGui::DefaultImGuiWindowType::ProvideFullScreenWindow;
-//   runnerParams.imGuiWindowParams.showMenuBar = false;
-
-//   runnerParams.callbacks.LoadAdditionalFonts = LoadFonts;
-//   runnerParams.callbacks.SetupImGuiStyle = Style_Mono;
-//   runnerParams.callbacks.ShowGui = []() {
-//     MainGui();
-//   };
-
-//   MainInit();
-
-//   HelloImGui::Run(runnerParams);
-//   return 0;
-// }
-

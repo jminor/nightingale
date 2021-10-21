@@ -4,9 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define YES_IMGUISOLOUD_ALL
+#define YES_IMGUISOLOUD_MODPLUG
 #include "imguisoloud.h"
-#include "imguinodegrapheditor.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -22,21 +21,17 @@ struct AppState
   uint32_t selection_start = 0;
   uint32_t selection_length = 1000;
 
+  char message[1024];
+
   SoLoud::Soloud audio;
   SoLoud::handle audio_handle;
 
   SoLoud::AudioSource *source;
-  SoLoud::Speech speech;
   SoLoud::Wav wav;
   SoLoud::Modplug mod;
 
-  char speech_text[1024];
-
-  ImGui::NodeGraphEditor nge;
-  
   bool show_main_window = true;
   bool show_style_editor = false;
-  bool show_node_graph = true;
   bool show_demo_window = false;
 };
 
