@@ -15,6 +15,7 @@
 struct AppState
 {
   char file_path[4096];
+  bool playing = false;
   float volume = 1.0f;
   float playhead = 0.0f;
   bool loop = false;
