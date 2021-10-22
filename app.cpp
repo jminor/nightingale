@@ -18,6 +18,7 @@
 #endif
 
 void DrawAudioPanel();
+void DrawButtons();
 
 #include "app.h"
 
@@ -349,13 +350,14 @@ void MainGui()
   }
 
   const char *app_name = "Nightingale";
+  const char *window_id = "###MainWindow";
   char window_title[1024];
   const char *filename = strrchr(appState.file_path, '/');
   if (filename) {
     filename++;
-    snprintf(window_title, sizeof(window_title), "%s - %s###MainWindow", app_name, filename);
+    snprintf(window_title, sizeof(window_title), "%s - %s%s", app_name, filename, window_id);
   }else{
-    snprintf(window_title, sizeof(window_title), "%s###MainWindow", app_name);
+    snprintf(window_title, sizeof(window_title), "%s%s", app_name, window_id);
   }
 
   ImGui::Begin(
@@ -363,7 +365,7 @@ void MainGui()
       &appState.show_main_window,
       // ImGuiWindowFlags_NoResize |
       // ImGuiWindowFlags_NoMove |
-      // ImGuiWindowFlags_NoTitleBar | 
+      ImGuiWindowFlags_NoTitleBar | 
       // ImGuiWindowFlags_NoBringToFrontOnFocus | 
       // ImGuiWindowFlags_NoDocking
       // ImGuiWindowFlags_AlwaysAutoResize
@@ -374,46 +376,58 @@ void MainGui()
     exit(0);
   }
 
+  if (IconButton(appState.mini_mode ? "\uF077" : "\uF078")) {
+    appState.mini_mode = !appState.mini_mode;
+  }
+  ImGui::SameLine();
+  *(strchr(window_title, '#'))='\0';
+  ImGui::Text("%s", window_title);
+
   // ImVec2 windowSize = ImGui::GetWindowSize();
   ImVec2 contentSize = ImGui::GetContentRegionAvail();
 
-  float splitter_size = 2.0f;
-  float w = contentSize.x - splitter_size - style.WindowPadding.x * 2;
-  float h = contentSize.y - style.WindowPadding.y * 2;
-  static float sz1 = 0;
-  static float sz2 = 0;
-  if (sz1 + sz2 != w) {
-    float delta = (sz1 + sz2) - w;
-    sz1 -= delta / 2;
-    sz2 -= delta / 2;
-  }
-  Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h, 8);
-  ImGui::BeginChild("1", ImVec2(sz1, h), true);
+  if (appState.mini_mode) {
+    DrawButtons();
 
-  DrawAudioPanel();
-
-  ImGui::EndChild();
-  ImGui::SameLine();
-  ImGui::BeginChild("2", ImVec2(sz2, h), true);
-
-  if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None))
-  {
-    if (ImGui::BeginTabItem("Nothing"))
-    {
-      ImGui::Text("This space intentionally left blank.");
-
-      ImGui::EndTabItem();
+  }else{
+    float splitter_size = 2.0f;
+    float w = contentSize.x - splitter_size - style.WindowPadding.x * 2;
+    float h = contentSize.y - style.WindowPadding.y * 2;
+    static float sz1 = 0;
+    static float sz2 = 0;
+    if (sz1 + sz2 != w) {
+      float delta = (sz1 + sz2) - w;
+      sz1 -= delta / 2;
+      sz2 -= delta / 2;
     }
-    if (ImGui::BeginTabItem("Theme"))
+    Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h, 8);
+    ImGui::BeginChild("1", ImVec2(sz1, h), true);
+
+    DrawAudioPanel();
+
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginChild("2", ImVec2(sz2, h), true);
+
+    if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None))
     {
-      ImGui::ShowStyleEditor();
+      if (ImGui::BeginTabItem("Nothing"))
+      {
+        ImGui::Text("This space intentionally left blank.");
 
-      ImGui::EndTabItem();
+        ImGui::EndTabItem();
+      }
+      if (ImGui::BeginTabItem("Theme"))
+      {
+        ImGui::ShowStyleEditor();
+
+        ImGui::EndTabItem();
+      }
+      ImGui::EndTabBar();
     }
-    ImGui::EndTabBar();
-  }
 
-  ImGui::EndChild();
+    ImGui::EndChild();
+  }
 
   ImGui::End();
 
@@ -439,7 +453,9 @@ void DrawButtons()
   // toggle
   if (!appState.playing) {
     if (IconButton("\uF04B##Play", button_size)) {
-      if (appState.audio_handle) {
+      if (!appState.source) {
+        // do nothing
+      }else if (appState.audio_handle) {
         appState.audio.setPause(appState.audio_handle, false);
       }else{
         appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
@@ -448,7 +464,9 @@ void DrawButtons()
     }
   }else{
     if (IconButton("\uF04C##Pause", button_size)) {
-      appState.audio.setPause(appState.audio_handle, true);
+      if (appState.source && appState.audio_handle) {
+        appState.audio.setPause(appState.audio_handle, true);
+      }
     }
   }
 

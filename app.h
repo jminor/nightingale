@@ -32,6 +32,7 @@ struct AppState
   SoLoud::Modplug mod;
 
   bool show_main_window = true;
+  bool mini_mode = false;
   bool show_style_editor = false;
   bool show_demo_window = false;
 };
