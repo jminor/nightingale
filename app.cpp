@@ -19,6 +19,13 @@
 
 void DrawAudioPanel();
 void DrawButtons();
+void LoadAudio(const char* path);
+void Play();
+void Pause();
+void Stop();
+void NextTrack();
+void PrevTrack();
+void Seek(float time);
 
 #include "app.h"
 
@@ -32,6 +39,7 @@ void Log(const char* format, ...)
   va_start(args, format);
   fprintf(stderr, "LOG: ");
   fprintf(stderr, format, args);
+  fprintf(stderr, "\n");
   va_end(args);
 }
 
@@ -130,8 +138,50 @@ void Style_Mono()
   colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
 }
 
+void QueueFolder(const char* folder)
+{
+  strncpy(appState.queue_folder, folder, sizeof(appState.queue_folder));
+}
+
+void NextTrack()
+{
+  ImGuiFs::PathStringVector files;
+  ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
+  if (files.size() == 0) {
+    return;
+  }
+  for(int i=0; i<files.size()-1; i++) {
+    if (!strcmp(files[i], appState.file_path)) {
+      LoadAudio(files[i+1]);
+      return;
+    }
+  }
+  LoadAudio(files.front());
+}
+
+void PrevTrack()
+{
+  ImGuiFs::PathStringVector files;
+  ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
+  if (files.size() == 0) {
+    return;
+  }
+  for(int i=1; i<files.size(); i++) {
+    if (!strcmp(files[i], appState.file_path)) {
+      LoadAudio(files[i-1]);
+      return;
+    }
+  }
+  LoadAudio(files.back());
+}
+
 void LoadAudio(const char* path)
 {
+  Stop();
+
+  appState.source = NULL;
+  appState.audio_handle = 0;
+
   strncpy(appState.file_path, path, sizeof(appState.file_path));
 
   SoLoud::result err;
@@ -150,6 +200,7 @@ void LoadAudio(const char* path)
     Message("Failed to load: %s: %s", appState.audio.getErrorString(err), path);
   }else{
     Message("Loaded: %s", path);
+    Play();
   }
 }
 
@@ -202,7 +253,32 @@ float LengthInSeconds()
   return 0;
 }
 
-void Seek(float time) {
+void Play()
+{
+  if (!appState.source) {
+    // do nothing
+  }else if (appState.audio_handle) {
+    appState.audio.setPause(appState.audio_handle, false);
+  }else{
+    appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
+    appState.audio.setLooping(appState.audio_handle, appState.loop);
+  }
+}
+
+void Pause()
+{
+  if (appState.source && appState.audio_handle) {
+    appState.audio.setPause(appState.audio_handle, true);
+  }
+}
+
+void Stop()
+{
+  appState.audio.stopAll();
+}
+
+void Seek(float time)
+{
   appState.playhead = time;
   if (appState.audio_handle) {
     appState.audio.setPause(appState.audio_handle, true);
@@ -318,7 +394,8 @@ float limit(float t, float small, float big)
 
 void AppUpdate()
 {
-    appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
+  bool was_playing = appState.playing;
+  appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
 
   if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
     appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
@@ -326,12 +403,17 @@ void AppUpdate()
   }else{
     appState.audio_handle = 0;
     appState.playhead = 0.0;
+    if (was_playing && !appState.playing) {
+      if (appState.loop) {
+        Play();
+      }else{
+        NextTrack();
+      }
+    }
   }
   if (appState.playing) {
     appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
-    // appState.selection_length = 256;
   }
-
 }
 
 void MainGui()
@@ -352,9 +434,9 @@ void MainGui()
   const char *app_name = "Nightingale";
   const char *window_id = "###MainWindow";
   char window_title[1024];
-  const char *filename = strrchr(appState.file_path, '/');
-  if (filename) {
-    filename++;
+  char filename[ImGuiFs::MAX_FILENAME_BYTES] = {""};
+  ImGuiFs::PathGetFileName(appState.file_path, filename);
+  if (strlen(filename)) {
     snprintf(window_title, sizeof(window_title), "%s - %s%s", app_name, filename, window_id);
   }else{
     snprintf(window_title, sizeof(window_title), "%s%s", app_name, window_id);
@@ -449,36 +531,36 @@ void DrawButtons()
 
   float width = ImGui::CalcItemWidth();
 
-  int num_buttons = 5;
+  int num_buttons = 7;
   ImVec2 button_size(
     (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
     ImGui::GetTextLineHeight()*2
     );
 
+  if (IconButton("\uF048##Prev", button_size)) {
+    PrevTrack();
+  }
+
+  ImGui::SameLine();
   // toggle
   if (!appState.playing) {
     if (IconButton("\uF04B##Play", button_size)) {
-      if (!appState.source) {
-        // do nothing
-      }else if (appState.audio_handle) {
-        appState.audio.setPause(appState.audio_handle, false);
-      }else{
-        appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
-        appState.audio.setLooping(appState.audio_handle, appState.loop);
-      }
+      Play();
     }
   }else{
     if (IconButton("\uF04C##Pause", button_size)) {
-      if (appState.source && appState.audio_handle) {
-        appState.audio.setPause(appState.audio_handle, true);
-      }
+      Pause();
     }
   }
 
   ImGui::SameLine();
-
   if (IconButton("\uF04D##Stop", button_size)) {
-    appState.audio.stopAll();
+    Stop();
+  }
+
+  ImGui::SameLine();
+  if (IconButton("\uF051##Next", button_size)) {
+    NextTrack();
   }
 
   ImGui::SameLine();
@@ -509,6 +591,7 @@ void DrawButtons()
   );
   if (strlen(chosenPath)>0) {
     LoadAudio(chosenPath);
+    QueueFolder(dlg.getLastDirectory());
   }
   ImGui::SameLine();
 
@@ -549,19 +632,7 @@ void DrawAudioPanel()
   // auto size = ImGui::GetItemRectSize();
   float width = ImGui::CalcItemWidth();
 
-  if (appState.source == &appState.mod) {
-    // this shows the mixed output waveform
-    ImGui::PlotLines(
-      "Live Waveform",
-      appState.audio.getWave(),
-      256,  // values_count
-      0,    // values_offset
-      nullptr, // overlay_text
-      -1.0f, // scale_min
-      1.0f, // scale_max
-      ImVec2(width,100) // graph_size
-      );
-  }else{
+  if (appState.source == &appState.wav) {
     ImGui::PlotConfig plot_config;
     plot_config.frame_size = ImVec2(width, 100);
     plot_config.values.ys = GetData() + appState.selection_start;
@@ -576,19 +647,18 @@ void DrawAudioPanel()
     ImGui::Plot("Waveform", plot_config);
     ImGui::SameLine();
     ImGui::Text("Waveform\nDetail");
-
-    // ImGui::PlotLines(
-    //   "Waveform 2",
-    //   appState.wav.mData,
-    //   appState.selection_length,
-    //   // fmax(appState.selection_length, 256),  // values_count
-    //   appState.selection_start,
-    //   // fmin(appState.selection_start, appState.wav.mSampleCount-256),   // values_offset
-    //   nullptr, // overlay_text
-    //   -1.0f, // scale_min
-    //   1.0f, // scale_max
-    //   ImVec2(width,100) // graph_size
-    //   );
+  }else{
+    // this shows the mixed output waveform
+    ImGui::PlotLines(
+      "Live Waveform",
+      appState.audio.getWave(),
+      256,  // values_count
+      0,    // values_offset
+      nullptr, // overlay_text
+      -1.0f, // scale_min
+      1.0f, // scale_max
+      ImVec2(width,100) // graph_size
+      );
   }
   ImGui::PlotHistogram(
     "FFT",

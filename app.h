@@ -14,7 +14,9 @@
 // Struct that holds the application's state
 struct AppState
 {
-  char file_path[4096];
+  char file_path[ImGuiFs::MAX_PATH_BYTES];
+  char queue_folder[ImGuiFs::MAX_PATH_BYTES];
+
   bool playing = false;
   float volume = 1.0f;
   float playhead = 0.0f;
