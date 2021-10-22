@@ -379,9 +379,14 @@ void MainGui()
   if (IconButton(appState.mini_mode ? "\uF077" : "\uF078")) {
     appState.mini_mode = !appState.mini_mode;
   }
+  ImVec2 button_size = ImGui::GetItemRectSize();
   ImGui::SameLine();
   *(strchr(window_title, '#'))='\0';
   ImGui::Text("%s", window_title);
+  ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - button_size.x + style.ItemSpacing.x);
+  if (IconButton("\uF00D", button_size)) {
+    exit(0);
+  }
 
   // ImVec2 windowSize = ImGui::GetWindowSize();
   ImVec2 contentSize = ImGui::GetContentRegionAvail();
