@@ -18,7 +18,7 @@
 #endif
 
 void DrawAudioPanel();
-void DrawButtons();
+void DrawButtons(ImVec2 button_size);
 void LoadAudio(const char* path);
 void Play();
 void Pause();
@@ -66,7 +66,7 @@ void LoadFonts()
 #else
   gTechFont = io.Fonts->AddFontFromFileTTF("fonts/ShareTechMono-Regular.ttf", 20.0f);
   static const ImWchar icon_fa_ranges[] = { 0xF000, 0xF18B, 0 };
-  gIconFont = io.Fonts->AddFontFromFileTTF("fonts/fontawesome-webfont.ttf", 20.0f, NULL, icon_fa_ranges);
+  gIconFont = io.Fonts->AddFontFromFileTTF("fonts/fontawesome-webfont.ttf", 16.0f, NULL, icon_fa_ranges);
 #endif
 }
 
@@ -449,8 +449,8 @@ void MainGui()
       // ImGuiWindowFlags_NoMove |
       ImGuiWindowFlags_NoTitleBar | 
       // ImGuiWindowFlags_NoBringToFrontOnFocus | 
-      // ImGuiWindowFlags_NoDocking
-      // ImGuiWindowFlags_AlwaysAutoResize
+      // ImGuiWindowFlags_NoDocking |
+      ImGuiWindowFlags_AlwaysAutoResize |
       0
       );
 
@@ -458,49 +458,57 @@ void MainGui()
     exit(0);
   }
 
-  if (IconButton(appState.mini_mode ? "\uF077" : "\uF078")) {
-    appState.mini_mode = !appState.mini_mode;
-  }
-  ImVec2 button_size = ImGui::GetItemRectSize();
-  ImGui::SameLine();
-  *(strchr(window_title, '#'))='\0';
-  ImGui::Text("%s", window_title);
-  ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - button_size.x + style.ItemSpacing.x);
+  ImVec2 button_size = ImVec2(
+    ImGui::GetTextLineHeightWithSpacing(),
+    ImGui::GetTextLineHeightWithSpacing()
+    );
+
   if (IconButton("\uF00D", button_size)) {
     exit(0);
   }
+  ImGui::SameLine();
+  if (IconButton(appState.mini_mode ? "\uF077" : "\uF078", button_size)) {
+    appState.mini_mode = !appState.mini_mode;
+  }
+  ImGui::SameLine();
+  *(strchr(window_title, '#'))='\0';
+  ImGui::Text("%s", window_title);
 
-  // ImVec2 windowSize = ImGui::GetWindowSize();
+  ImGui::SameLine();
+  DrawButtons(button_size);
+
+  // ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - button_size.x + style.ItemSpacing.x);
+
   ImVec2 contentSize = ImGui::GetContentRegionAvail();
+  if (contentSize.y < 500) contentSize.y = 500;
 
   if (appState.mini_mode) {
-    DrawButtons();
 
   }else{
-    float splitter_size = 2.0f;
-    float w = contentSize.x - splitter_size - style.WindowPadding.x * 2;
-    float h = contentSize.y - style.WindowPadding.y * 2;
-    static float sz1 = 0;
-    static float sz2 = 0;
-    if (sz1 + sz2 != w) {
-      float delta = (sz1 + sz2) - w;
-      sz1 -= delta / 2;
-      sz2 -= delta / 2;
-    }
-    Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h, 8);
-    ImGui::BeginChild("1", ImVec2(sz1, h), true);
+    // float splitter_size = 2.0f;
+    // float w = contentSize.x - splitter_size - style.WindowPadding.x * 2;
+    // float h = contentSize.y - style.WindowPadding.y * 2;
+    // static float sz1 = 0;
+    // static float sz2 = 0;
+    // if (sz1 + sz2 != w) {
+    //   float delta = (sz1 + sz2) - w;
+    //   sz1 -= delta / 2;
+    //   sz2 -= delta / 2;
+    // }
+    // Splitter(true, splitter_size, &sz1, &sz2, 8, 8, h, 8);
+    // ImGui::BeginChild("1", ImVec2(sz1, h), true);
 
-    DrawAudioPanel();
+    // DrawAudioPanel();
 
-    ImGui::EndChild();
-    ImGui::SameLine();
-    ImGui::BeginChild("2", ImVec2(sz2, h), true);
+    // ImGui::EndChild();
+    // ImGui::SameLine();
+    // ImGui::BeginChild("2", ImVec2(sz2, h), true);
 
     if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None))
     {
-      if (ImGui::BeginTabItem("Nothing"))
+      if (ImGui::BeginTabItem("Audio"))
       {
-        ImGui::Text("This space intentionally left blank.");
+        DrawAudioPanel();
 
         ImGui::EndTabItem();
       }
@@ -513,7 +521,7 @@ void MainGui()
       ImGui::EndTabBar();
     }
 
-    ImGui::EndChild();
+    // ImGui::EndChild();
   }
 
   ImGui::End();
@@ -524,18 +532,9 @@ void MainGui()
 }
 
 
-void DrawButtons()
+void DrawButtons(ImVec2 button_size)
 {
   ImGuiStyle& style = ImGui::GetStyle();
-  // ImGuiIO& io = ImGui::GetIO();
-
-  float width = ImGui::CalcItemWidth();
-
-  int num_buttons = 7;
-  ImVec2 button_size(
-    (width - style.ItemSpacing.x*(num_buttons-1))/num_buttons,
-    ImGui::GetTextLineHeight()*2
-    );
 
   if (IconButton("\uF048##Prev", button_size)) {
     PrevTrack();
@@ -615,9 +614,9 @@ void DrawAudioPanel()
   // ImGuiStyle& style = ImGui::GetStyle();
   ImGuiIO& io = ImGui::GetIO();
 
-  ImGui::PushItemWidth(-100);
+  // ImGui::PushItemWidth(-100);
 
-  DrawButtons();
+  // DrawButtons();
 
   if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
     appState.audio.setVolume(appState.audio_handle, appState.volume);
@@ -672,7 +671,7 @@ void DrawAudioPanel()
     );
 
   ImGui::PlotConfig plot_config;
-  plot_config.frame_size = ImVec2(width, 200);
+  plot_config.frame_size = ImVec2(width, 100);
   plot_config.values.ys = GetData();
   plot_config.values.count = DataLen();
   plot_config.scale.min = -1.0f;
@@ -696,7 +695,7 @@ void DrawAudioPanel()
   ImGui::SameLine();
   ImGui::Text("Waveform\nFull");
 
-  ImGui::PopItemWidth();
+  // ImGui::PopItemWidth();
 
   static float peak = 0;
   static float volume = 0;
