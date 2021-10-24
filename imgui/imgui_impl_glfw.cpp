@@ -334,7 +334,7 @@ void ImGui_ImplGlfw_WaitForEvent()
     if (!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_EnablePowerSavingMode))
         return;
 
-    bool window_is_hidden = !glfwGetWindowAttrib(g_Window, GLFW_VISIBLE) || glfwGetWindowAttrib(g_Window, GLFW_ICONIFIED);
+    bool window_is_hidden = false; //!glfwGetWindowAttrib(g_Window, GLFW_VISIBLE) || glfwGetWindowAttrib(g_Window, GLFW_ICONIFIED);
     double waiting_time = window_is_hidden ? INFINITY : ImGui::GetEventWaitingTime();
     if (waiting_time > 0.0)
     {
