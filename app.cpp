@@ -618,6 +618,10 @@ void DrawAudioPanel()
 
   // DrawButtons();
 
+  if (appState.playing) {
+    ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0); // = 30fps
+  }
+
   if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
     appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
