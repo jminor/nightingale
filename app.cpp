@@ -218,7 +218,8 @@ void MainInit()
   if (err) {
     Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
   }
-  appState.audio.setVisualizationEnable(true);
+
+  // LoadAudio("/Users/jminor/git/nightingale/audio/anomaly.wav");
 }
 
 void MainCleanup()
@@ -508,10 +509,11 @@ void MainGui()
   ImGui::SameLine();
   ImGui::Text("%s", strlen(filename) ? filename : app_name);
 
-  ImGui::SameLine();
-  ImGui::Text("/");
+  if (strlen(filename)) {
 
-  if (appState.playing) {
+    ImGui::SameLine();
+    ImGui::Text("/");
+
     ImGui::SameLine();
     ImGui::Text("%s", timecode_from(appState.playhead));
     ImGui::SameLine();
@@ -529,6 +531,7 @@ void MainGui()
   if (contentSize.y < 500) contentSize.y = 500;
 
   if (appState.mini_mode) {
+    appState.audio.setVisualizationEnable(false);
 
     if (appState.playing) {
       // for the time counter
@@ -536,6 +539,7 @@ void MainGui()
     }
 
   }else{
+    appState.audio.setVisualizationEnable(true);
 
     if (appState.playing) {
       // for the waveforms, etc.

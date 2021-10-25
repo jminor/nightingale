@@ -45,6 +45,8 @@ namespace SoLoud
 			for (int ch = 0; ch < mChannels; ch++)
 			{
 				for (int s = 0; s < samples; s++) {
+					// Mp3 buffer is interleaved per-sample
+					// but SoLoud buffer has channels separate
 					aBuffer[s + aSamples*ch] = m_parent->mSampleData[(m_playhead + s) * mChannels + ch];
 				}
 			}
@@ -74,6 +76,7 @@ namespace SoLoud
 		if (mSampleData) {
 			drmp3_free(mSampleData, NULL);
 			mSampleData = NULL;
+			mSampleCount = 0;
 		}
 	}
 
@@ -81,6 +84,12 @@ namespace SoLoud
 	{
 		drmp3_config config;
 		drmp3_uint64 frame_count;
+
+		if (mSampleData) {
+			drmp3_free(mSampleData, NULL);
+			mSampleData = NULL;
+			mSampleCount = 0;
+		}
 
 		mSampleData = drmp3_open_file_and_read_pcm_frames_f32(
 			path,
