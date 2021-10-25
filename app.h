@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define YES_IMGUISOLOUD_MODPLUG
-#include "imguisoloud.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -26,12 +24,12 @@ struct AppState
 
   char message[1024];
 
-  SoLoud::Soloud audio;
-  SoLoud::handle audio_handle;
+  // SoLoud::Soloud audio;
+  // SoLoud::handle audio_handle;
 
-  SoLoud::AudioSource *source;
-  SoLoud::Wav wav;
-  SoLoud::Modplug mod;
+  // SoLoud::AudioSource *source;
+  // SoLoud::Wav wav;
+  // SoLoud::Modplug mod;
 
   bool show_main_window = true;
   bool mini_mode = false;

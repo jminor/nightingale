@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define YES_IMGUISOLOUD_MODPLUG
-#include "imguisoloud.h"
+#include "audio.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -179,28 +178,31 @@ void LoadAudio(const char* path)
 {
   Stop();
 
-  appState.source = NULL;
-  appState.audio_handle = 0;
+  // appState.source = NULL;
+  // appState.audio_handle = 0;
 
   strncpy(appState.file_path, path, sizeof(appState.file_path));
 
-  SoLoud::result err;
-  if (!strncmp(".wav", path+strlen(path)-4, 4)) {
-    err = appState.wav.load(path);
-    if (!err) {
-      appState.source = &appState.wav;
-    }
-  }else{
-    err = appState.mod.load(path);
-    if (!err) {
-      appState.source = &appState.mod;
-    }
-  }
+  // SoLoud::result err;
+  // if (!strncmp(".wav", path+strlen(path)-4, 4)) {
+  //   err = appState.wav.load(path);
+  //   if (!err) {
+  //     appState.source = &appState.wav;
+  //   }
+  // }else{
+  //   err = appState.mod.load(path);
+  //   if (!err) {
+  //     appState.source = &appState.mod;
+  //   }
+  // }
+
+  int err = play_audio_file(appState.file_path);
+
   if (err) {
-    Message("Failed to load: %s: %s", appState.audio.getErrorString(err), path);
+    Message("Failed to load: %s", path);
   }else{
     Message("Loaded: %s", path);
-    Play();
+    // Play();
   }
 }
 
@@ -210,84 +212,90 @@ void MainInit()
 
   LoadFonts();
 
-  SoLoud::result err = appState.audio.init();
-  if (err) {
-    Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
-  }
+  // SoLoud::result err = appState.audio.init();
+  // if (err) {
+  //   Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
+  // }
   // LoadAudio(""); ///Users/jminor/Library/Mobile Documents/com~apple~CloudDocs/Sokpop Sources/sokpop-source 5/nosoksky.gmx/sound/audio/sou_radio_fragment5.wav");
-  appState.audio.setVisualizationEnable(true);
+  // appState.audio.setVisualizationEnable(true);
 }
 
 void MainCleanup()
 {
-  appState.audio.deinit();
+  // appState.audio.deinit();
+  stop_audio();
 }
+
+static float dummy_buffer[256];
 
 float* GetData()
 {
-  if (appState.source == &appState.wav) {
-    return appState.wav.mData;
-  }else if (appState.source == &appState.mod) {
-    return (float*)appState.mod.mData;
-  }
-  return 0;
+  // if (appState.source == &appState.wav) {
+  //   return appState.wav.mData;
+  // }else if (appState.source == &appState.mod) {
+  //   return (float*)appState.mod.mData;
+  // }
+  return dummy_buffer;
 }
 
 unsigned int DataLen()
 {
-  if (appState.source == &appState.wav) {
-    return appState.wav.mSampleCount;
-  }else if (appState.source == &appState.mod) {
-    return appState.mod.mDataLen / sizeof(float);
-  }
+  // if (appState.source == &appState.wav) {
+  //   return appState.wav.mSampleCount;
+  // }else if (appState.source == &appState.mod) {
+  //   return appState.mod.mDataLen / sizeof(float);
+  // }
   return 0;
 }
 
 float LengthInSeconds()
 {
-  if (appState.source == &appState.wav) {
-    return appState.wav.getLength();
-  }else if (appState.source == &appState.mod) {
-    return appState.mod.getLength();
-  }
+  // if (appState.source == &appState.wav) {
+  //   return appState.wav.getLength();
+  // }else if (appState.source == &appState.mod) {
+  //   return appState.mod.getLength();
+  // }
   return 0;
 }
 
 void Play()
 {
-  if (!appState.source) {
-    // do nothing
-  }else if (appState.audio_handle) {
-    appState.audio.setPause(appState.audio_handle, false);
-  }else{
-    appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
-    appState.audio.setLooping(appState.audio_handle, appState.loop);
-  }
+  // if (!appState.source) {
+  //   // do nothing
+  // }else if (appState.audio_handle) {
+  //   appState.audio.setPause(appState.audio_handle, false);
+  // }else{
+  //   appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
+  //   appState.audio.setLooping(appState.audio_handle, appState.loop);
+  // }
+  appState.playing = true;
 }
 
 void Pause()
 {
-  if (appState.source && appState.audio_handle) {
-    appState.audio.setPause(appState.audio_handle, true);
-  }
+  // if (appState.source && appState.audio_handle) {
+  //   appState.audio.setPause(appState.audio_handle, true);
+  // }
+  appState.playing = false;
 }
 
 void Stop()
 {
-  appState.audio.stopAll();
+  // appState.audio.stopAll();
+  appState.playing = false;
 }
 
 void Seek(float time)
 {
   appState.playhead = time;
-  if (appState.audio_handle) {
-    appState.audio.setPause(appState.audio_handle, true);
-  }else{
-    appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
-    appState.audio.setLooping(appState.audio_handle, appState.loop);
-  }
-  appState.audio.seek(appState.audio_handle, appState.playhead);
-  appState.selection_start = DataLen() * (appState.playhead / LengthInSeconds());
+  // if (appState.audio_handle) {
+  //   appState.audio.setPause(appState.audio_handle, true);
+  // }else{
+  //   appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
+  //   appState.audio.setLooping(appState.audio_handle, appState.loop);
+  // }
+  // appState.audio.seek(appState.audio_handle, appState.playhead);
+  // appState.selection_start = DataLen() * (appState.playhead / LengthInSeconds());
 }
 
 bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
@@ -394,33 +402,33 @@ float limit(float t, float small, float big)
 
 void AppUpdate()
 {
-  bool was_playing = appState.playing;
-  appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
+  // bool was_playing = appState.playing;
+  // appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
 
-  if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
-    appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
-    appState.playhead = fmodf(appState.playhead, LengthInSeconds());
-  }else{
-    appState.audio_handle = 0;
-    appState.playhead = 0.0;
-    if (was_playing && !appState.playing) {
-      if (appState.loop) {
-        Play();
-      }else{
-        NextTrack();
-      }
-    }
-  }
-  if (appState.playing) {
-    appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
-  }
+  // if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
+  //   appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
+  //   appState.playhead = fmodf(appState.playhead, LengthInSeconds());
+  // }else{
+  //   appState.audio_handle = 0;
+  //   appState.playhead = 0.0;
+  //   if (was_playing && !appState.playing) {
+  //     if (appState.loop) {
+  //       Play();
+  //     }else{
+  //       NextTrack();
+  //     }
+  //   }
+  // }
+  // if (appState.playing) {
+  //   appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
+  // }
 }
 
 void MainGui()
 {
   AppUpdate();
 
-  ImGuiStyle& style = ImGui::GetStyle();
+  // ImGuiStyle& style = ImGui::GetStyle();
 
   ImGuiIO& io = ImGui::GetIO();
   ImVec2 displaySize = io.DisplaySize;
@@ -573,7 +581,7 @@ void DrawButtons(ImVec2 button_size)
     );
   if (IconButton("\uF021##Loop", button_size)) {
     appState.loop = !appState.loop;
-    appState.audio.setLooping(appState.audio_handle, appState.loop);
+    // appState.audio.setLooping(appState.audio_handle, appState.loop);
   }
   ImGui::PopStyleColor();
   ImGui::PopStyleVar();
@@ -585,8 +593,9 @@ void DrawButtons(ImVec2 button_size)
   const char* chosenPath = dlg.chooseFileDialog(
     browseButtonPressed,
     dlg.getLastDirectory(),
-    ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
-    "Load Audio File"
+    // ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
+    ".wav;.mp3;.flac",
+    "Load Audio File (wav, mp3, flac)"
   );
   if (strlen(chosenPath)>0) {
     LoadAudio(chosenPath);
@@ -623,19 +632,19 @@ void DrawAudioPanel()
   }
 
   if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
-    appState.audio.setVolume(appState.audio_handle, appState.volume);
+    // appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
 
   float duration = LengthInSeconds();
   if (ImGui::SliderFloat("Playhead", &appState.playhead, 0.0f, duration)) {
     Seek(appState.playhead);
-    appState.playing = false;
+    // appState.playing = false;
   }
 
   // auto size = ImGui::GetItemRectSize();
   float width = ImGui::CalcItemWidth();
 
-  if (appState.source == &appState.wav) {
+  if (false) { //appState.source == &appState.wav) {
     ImGui::PlotConfig plot_config;
     plot_config.frame_size = ImVec2(width, 100);
     plot_config.values.ys = GetData() + appState.selection_start;
@@ -654,7 +663,7 @@ void DrawAudioPanel()
     // this shows the mixed output waveform
     ImGui::PlotLines(
       "Live Waveform",
-      appState.audio.getWave(),
+      GetData(), //appState.audio.getWave(),
       256,  // values_count
       0,    // values_offset
       nullptr, // overlay_text
@@ -663,16 +672,16 @@ void DrawAudioPanel()
       ImVec2(width,100) // graph_size
       );
   }
-  ImGui::PlotHistogram(
-    "FFT",
-    appState.audio.calcFFT(),
-    256,  // values_count
-    0,    // values_offset
-    nullptr, // overlay_text
-    FLT_MAX, // scale_min
-    FLT_MAX, // scale_max
-    ImVec2(width,100) // graph_size
-    );
+  // ImGui::PlotHistogram(
+  //   "FFT",
+  //   appState.audio.calcFFT(),
+  //   256,  // values_count
+  //   0,    // values_offset
+  //   nullptr, // overlay_text
+  //   FLT_MAX, // scale_min
+  //   FLT_MAX, // scale_max
+  //   ImVec2(width,100) // graph_size
+  //   );
 
   ImGui::PlotConfig plot_config;
   plot_config.frame_size = ImVec2(width, 100);
@@ -704,7 +713,7 @@ void DrawAudioPanel()
   static float peak = 0;
   static float volume = 0;
   float max_sample = 0;
-  float* data = appState.audio.getWave();
+  float* data = GetData(); //appState.audio.getWave();
   for (int i=0; i<256; i++) {
     if (data[i] > max_sample) max_sample = data[i];
   }
