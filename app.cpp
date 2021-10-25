@@ -250,6 +250,14 @@ unsigned int DataLen()
   return 0;
 }
 
+int GetChannels()
+{
+  if (appState.source) {
+    return appState.source->mChannels;
+  }
+  return 1;
+}
+
 float LengthInSeconds()
 {
   if (appState.source == &appState.wav) {
@@ -425,6 +433,23 @@ void AppUpdate()
   }
 }
 
+static char buffer[256];
+const char* timecode_from(float t) {
+
+  // float fraction = t - floor(t);
+  t = floor(t);
+  int seconds = fmodf(t, 60.0);
+  int minutes = fmodf(t/60.0, 60.0);
+  int hours = floor(t/3600.0);
+
+  snprintf(
+    buffer, sizeof(buffer),
+    "%d:%02d:%02d",
+    hours, minutes, seconds); //, (int)(fraction*100.0));
+
+  return buffer;
+}
+
 void MainGui()
 {
   AppUpdate();
@@ -479,9 +504,21 @@ void MainGui()
   if (IconButton(appState.mini_mode ? "\uF077" : "\uF078", button_size)) {
     appState.mini_mode = !appState.mini_mode;
   }
+
   ImGui::SameLine();
-  *(strchr(window_title, '#'))='\0';
-  ImGui::Text("%s", window_title);
+  ImGui::Text("%s", strlen(filename) ? filename : app_name);
+
+  ImGui::SameLine();
+  ImGui::Text("/");
+
+  if (appState.playing) {
+    ImGui::SameLine();
+    ImGui::Text("%s", timecode_from(appState.playhead));
+    ImGui::SameLine();
+    ImGui::Text("/");
+    ImGui::SameLine();
+    ImGui::Text("%s", timecode_from(LengthInSeconds()));
+  }
 
   ImGui::SameLine();
   DrawButtons(button_size);
@@ -493,7 +530,18 @@ void MainGui()
 
   if (appState.mini_mode) {
 
+    if (appState.playing) {
+      // for the time counter
+      ImGui::SetMaxWaitBeforeNextFrame(1.0);
+    }
+
   }else{
+
+    if (appState.playing) {
+      // for the waveforms, etc.
+      ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0);
+    }
+
     // float splitter_size = 2.0f;
     // float w = contentSize.x - splitter_size - style.WindowPadding.x * 2;
     // float h = contentSize.y - style.WindowPadding.y * 2;
@@ -623,14 +671,6 @@ void DrawAudioPanel()
   // ImGuiStyle& style = ImGui::GetStyle();
   ImGuiIO& io = ImGui::GetIO();
 
-  // ImGui::PushItemWidth(-100);
-
-  // DrawButtons();
-
-  if (appState.playing) {
-    ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0); // = 30fps
-  }
-
   if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
     appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
@@ -641,24 +681,23 @@ void DrawAudioPanel()
     appState.playing = false;
   }
 
-  // auto size = ImGui::GetItemRectSize();
   float width = ImGui::CalcItemWidth();
 
-  if (appState.source == &appState.wav) {
-    ImGui::PlotConfig plot_config;
-    plot_config.frame_size = ImVec2(width, 100);
-    plot_config.values.ys = GetData() + appState.selection_start;
-    plot_config.values.count = appState.selection_length;
-    plot_config.scale.min = -1.0f;
-    plot_config.scale.max = 1.0f;
-    plot_config.selection.show = false;
-    // plot_config.selection.show = appState.playing;
-    // uint32_t start = 0, length = 256;
-    // plot_config.selection.start = &start;
-    // plot_config.selection.length = &length;
-    ImGui::Plot("Waveform", plot_config);
-    ImGui::SameLine();
-    ImGui::Text("Waveform\nDetail");
+  if (appState.source == &appState.wav || appState.source == &appState.mp3) {
+    ImGui::PlotLines(
+      "Waveform\nDetail",
+      GetData() + appState.selection_start,
+      appState.selection_length / GetChannels(),  // values_count
+      0,    // values_offset
+      nullptr, // overlay_text
+      -1.0f, // scale_min
+      1.0f, // scale_max
+      ImVec2(width,100), // graph_size
+      sizeof(float)*GetChannels() // stride
+      );
+    uint32_t low = 256;
+    uint32_t high = appState.source->mBaseSamplerate;
+    ImGui::SliderScalar("Zoom", ImGuiDataType_U32, &appState.selection_length, &low, &high);
   }else{
     // this shows the mixed output waveform
     ImGui::PlotLines(
@@ -672,16 +711,18 @@ void DrawAudioPanel()
       ImVec2(width,100) // graph_size
       );
   }
+  static int fft_zoom = 256;
   ImGui::PlotHistogram(
     "FFT",
     appState.audio.calcFFT(),
-    256,  // values_count
+    fft_zoom,  // values_count
     0,    // values_offset
     nullptr, // overlay_text
     FLT_MAX, // scale_min
     FLT_MAX, // scale_max
     ImVec2(width,100) // graph_size
     );
+  ImGui::SliderInt("Zoom##FFT", &fft_zoom, 16, 256);
 
   ImGui::PlotConfig plot_config;
   plot_config.frame_size = ImVec2(width, 100);
@@ -707,8 +748,6 @@ void DrawAudioPanel()
 
   ImGui::SameLine();
   ImGui::Text("Waveform\nFull");
-
-  // ImGui::PopItemWidth();
 
   static float peak = 0;
   static float volume = 0;
