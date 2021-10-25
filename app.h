@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define YES_IMGUISOLOUD_MODPLUG
-#include "imguisoloud.h"
+#include "audio.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -32,6 +31,7 @@ struct AppState
   SoLoud::AudioSource *source;
   SoLoud::Wav wav;
   SoLoud::Modplug mod;
+  SoLoud::Mp3 mp3;
 
   bool show_main_window = true;
   bool mini_mode = false;

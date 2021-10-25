@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define YES_IMGUISOLOUD_MODPLUG
-#include "imguisoloud.h"
+#include "audio.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -184,8 +183,13 @@ void LoadAudio(const char* path)
 
   strncpy(appState.file_path, path, sizeof(appState.file_path));
 
-  SoLoud::result err;
-  if (!strncmp(".wav", path+strlen(path)-4, 4)) {
+  SoLoud::result err=0;
+  if (!strncmp(".mp3", path+strlen(path)-4, 4)) {
+    err = appState.mp3.load(path);
+    if (!err) {
+      appState.source = &appState.mp3;
+    }
+  }else if (!strncmp(".wav", path+strlen(path)-4, 4)) {
     err = appState.wav.load(path);
     if (!err) {
       appState.source = &appState.wav;
@@ -214,7 +218,6 @@ void MainInit()
   if (err) {
     Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
   }
-  // LoadAudio(""); ///Users/jminor/Library/Mobile Documents/com~apple~CloudDocs/Sokpop Sources/sokpop-source 5/nosoksky.gmx/sound/audio/sou_radio_fragment5.wav");
   appState.audio.setVisualizationEnable(true);
 }
 
@@ -229,6 +232,8 @@ float* GetData()
     return appState.wav.mData;
   }else if (appState.source == &appState.mod) {
     return (float*)appState.mod.mData;
+  }else if (appState.source == &appState.mp3) {
+    return appState.mp3.mSampleData;
   }
   return 0;
 }
@@ -239,6 +244,8 @@ unsigned int DataLen()
     return appState.wav.mSampleCount;
   }else if (appState.source == &appState.mod) {
     return appState.mod.mDataLen / sizeof(float);
+  }else if (appState.source == &appState.mp3) {
+    return appState.mp3.mSampleCount;
   }
   return 0;
 }
@@ -249,6 +256,8 @@ float LengthInSeconds()
     return appState.wav.getLength();
   }else if (appState.source == &appState.mod) {
     return appState.mod.getLength();
+  }else if (appState.source == &appState.mp3) {
+    return appState.mp3.getLength();
   }
   return 0;
 }
@@ -420,7 +429,7 @@ void MainGui()
 {
   AppUpdate();
 
-  ImGuiStyle& style = ImGui::GetStyle();
+  // ImGuiStyle& style = ImGui::GetStyle();
 
   ImGuiIO& io = ImGui::GetIO();
   ImVec2 displaySize = io.DisplaySize;
@@ -585,7 +594,7 @@ void DrawButtons(ImVec2 button_size)
   const char* chosenPath = dlg.chooseFileDialog(
     browseButtonPressed,
     dlg.getLastDirectory(),
-    ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
+    ".mp3;.wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
     "Load Audio File"
   );
   if (strlen(chosenPath)>0) {
