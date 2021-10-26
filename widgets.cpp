@@ -35,6 +35,11 @@ bool KnobFloat(const char* label, float* v, float v_speed, float v_min, float v_
     return KnobScalar(label, ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, flags);
 }
 
+bool KnobInt(const char* label, int* v, float v_speed, int v_min, int v_max, const char* format, ImGuiSliderFlags flags)
+{
+    return KnobScalar(label, ImGuiDataType_S32, v, v_speed, &v_min, &v_max, format, flags);
+}
+
 static const float          DRAG_MOUSE_THRESHOLD_FACTOR = 0.50f;    // Multiplier for the default value of io.MouseDragThreshold to make DragFloat/DragInt react faster to mouse drags.
 
 // Note: p_data, p_min and p_max are _pointers_ to a memory address holding the data. For a Knob widget, p_min and p_max are optional.
@@ -116,7 +121,7 @@ bool KnobScalar(const char* label, ImGuiDataType data_type, void* p_data, float 
     case ImGuiDataType_Double: { t = (*(double*)p_data - *(const double*)p_min) / (float)(*(const double*)p_max - *(const double*)p_min); }; break;
     case ImGuiDataType_COUNT:  break;
     }
-
+    t = fmin(fmax(0, t), 1);
 
     ImDrawList *dl = window->DrawList;
     ImVec2 center = frame_bb.GetCenter();

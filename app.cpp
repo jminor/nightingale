@@ -204,9 +204,9 @@ void LoadAudio(const char* path)
     }
   }
   if (err) {
-    Message("Failed to load: %s: %s", appState.audio.getErrorString(err), path);
+    Message("FAIL: %s: %s", appState.audio.getErrorString(err), path);
   }else{
-    Message("Loaded: %s", path);
+    // Message("LOAD: %s", path);
     Play();
   }
 }
@@ -301,12 +301,12 @@ void Stop()
 void Seek(float time)
 {
   appState.playhead = time;
-  if (appState.audio_handle) {
-    appState.audio.setPause(appState.audio_handle, true);
-  }else{
-    appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
-    appState.audio.setLooping(appState.audio_handle, appState.loop);
-  }
+  // if (appState.audio_handle) {
+  //   appState.audio.setPause(appState.audio_handle, true);
+  // }else{
+  //   appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
+  //   appState.audio.setLooping(appState.audio_handle, appState.loop);
+  // }
   appState.audio.seek(appState.audio_handle, appState.playhead);
   appState.selection_start = DataLen() * (appState.playhead / LengthInSeconds());
 }
@@ -357,7 +357,8 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
   );
   ImU32 peak_color = ImLerpColors(
     base_color,
-    IM_COL32(0xff, 0, 0, 0x88),
+    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    //IM_COL32(0xff, 0, 0, 0x88),
     qqq(peak)
   );
 
@@ -679,28 +680,51 @@ void ComputeAndDrawVolumeMeter(ImVec2 size)
 
 void DrawAudioPanel()
 {
-  // ImGuiStyle& style = ImGui::GetStyle();
+  ImGuiStyle& style = ImGui::GetStyle();
   ImGuiIO& io = ImGui::GetIO();
 
-  ComputeAndDrawVolumeMeter(ImVec2(100,100));
+  ImGui::BeginGroup();
+
+  float duration = LengthInSeconds();
+  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
+    Seek(appState.playhead);
+    // appState.playing = false;
+  }
+
+  float width = ImGui::CalcItemWidth();
+
+  {
+    ImGui::PlotConfig plot_config;
+    plot_config.frame_size = ImVec2(width, 100);
+    plot_config.values.ys = GetData();
+    plot_config.values.count = DataLen();
+    plot_config.scale.min = -1.0f;
+    plot_config.scale.max = 1.0f;
+    plot_config.selection.show = true;
+    plot_config.selection.start = &appState.selection_start;
+    plot_config.selection.length = &appState.selection_length;
+    // plot_config.overlay_text = "Hello";
+    if (ImGui::Plot("DAT", plot_config) == ImGui::PlotStatus::selection_updated) {
+      Seek(appState.selection_start * LengthInSeconds() / DataLen());
+      // appState.playing = false;
+      appState.selection_length = fmax(appState.selection_length, 256);
+    }
+
+    // ImVec2 size = ImGui::GetItemRectSize();
+    ImVec2 corner = ImGui::GetItemRectMax();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+      corner -= ImGui::GetWindowPos();
+    }
+
+    ImGui::SameLine(0,style.ItemInnerSpacing.x);
+    ImGui::Text("DAT");
+  }
 
   ImGui::SameLine();
 
   if (KnobFloat("VOL", &appState.volume, 0.01f, 0.0f, 1.0f, "%.2f")) {
     appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
-
-  // if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f, "%.2f")) {
-  //   appState.audio.setVolume(appState.audio_handle, appState.volume);
-  // }
-
-  float duration = LengthInSeconds();
-  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration)) {
-    Seek(appState.playhead);
-    appState.playing = false;
-  }
-
-  float width = ImGui::CalcItemWidth();
 
   if (appState.source == &appState.wav || appState.source == &appState.mp3) {
     ImGui::PlotLines(
@@ -716,7 +740,8 @@ void DrawAudioPanel()
       );
     uint32_t low = 256;
     uint32_t high = appState.source->mBaseSamplerate;
-    ImGui::SliderScalar("Z##WAV", ImGuiDataType_U32, &appState.selection_length, &low, &high);
+    ImGui::SameLine();
+    KnobScalar("##WAV", ImGuiDataType_U32, &appState.selection_length, 100.0f, &low, &high, "%d", 0);
   }else{
     // this shows the mixed output waveform
     ImGui::PlotLines(
@@ -741,32 +766,21 @@ void DrawAudioPanel()
     FLT_MAX, // scale_max
     ImVec2(width,100) // graph_size
     );
-  ImGui::SliderInt("Z##FFT", &fft_zoom, 16, 256);
+  ImGui::SameLine();
+  KnobInt("##FFT", &fft_zoom, 1.0f, 16, 256);
+  // ImGui::SliderInt("Z##FFT", &fft_zoom, 16, 256);
 
-  ImGui::PlotConfig plot_config;
-  plot_config.frame_size = ImVec2(width, 100);
-  plot_config.values.ys = GetData();
-  plot_config.values.count = DataLen();
-  plot_config.scale.min = -1.0f;
-  plot_config.scale.max = 1.0f;
-  plot_config.selection.show = true;
-  plot_config.selection.start = &appState.selection_start;
-  plot_config.selection.length = &appState.selection_length;
-  // plot_config.overlay_text = "Hello";
-  if (ImGui::Plot("DAT", plot_config) == ImGui::PlotStatus::selection_updated) {
-    Seek(appState.selection_start * LengthInSeconds() / DataLen());
-    appState.playing = false;
-    appState.selection_length = fmax(appState.selection_length, 256);
-  }
+  ImGui::EndGroup();
 
-  ImVec2 size = ImGui::GetItemRectSize();
-  ImVec2 corner = ImGui::GetItemRectMax();
-  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-    corner -= ImGui::GetWindowPos();
-  }
+  ImVec2 group_size = ImGui::GetItemRectSize();
 
   ImGui::SameLine();
-  ImGui::Text("DAT");
+  ComputeAndDrawVolumeMeter(ImVec2(50, group_size.y));
+
+  // ImGui::SameLine();
+  // if (ImGui::VSliderFloat("##VOL", ImVec2(25, group_size.y), &appState.volume, 0.0f, 1.0f, "")) {
+  //   appState.audio.setVolume(appState.audio_handle, appState.volume);
+  // }
 
   ImGui::Spacing();
 
