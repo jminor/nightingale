@@ -302,13 +302,18 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
                 ImGui::GetColorU32(ImGuiCol_Border),
                 style.FrameRounding);
 
-    ImU32 base_color = ImGui::GetColorU32(ImGuiCol_FrameBg);
-    ImU32 volume_color = ImLerpColors(base_color,
-                                      ImGui::GetColorU32(ImGuiCol_PlotHistogram),
-                                      qqq(volume));
-    ImU32 peak_color = ImLerpColors(base_color,
-                                    IM_COL32(0xff, 0, 0, 0x88),
-                                    qqq(peak));
+  ImU32 base_color = ImGui::GetColorU32(ImGuiCol_FrameBg);
+  ImU32 volume_color = ImLerpColors(
+    base_color,
+    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    qqq(volume)
+  );
+  ImU32 peak_color = ImLerpColors(
+    base_color,
+    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    //IM_COL32(0xff, 0, 0, 0x88),
+    qqq(peak)
+  );
 
     dl->AddRectFilledMultiColor(ImVec2(pos.x,
                                        pos.y + size.y * (1.0 - peak)),
@@ -622,7 +627,42 @@ void DrawAudioPanel()
     // ImGuiStyle& style = ImGui::GetStyle();
     ImGuiIO& io = ImGui::GetIO();
 
-  ComputeAndDrawVolumeMeter(ImVec2(100,100));
+  ImGui::BeginGroup();
+
+  float duration = LengthInSeconds();
+  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
+    Seek(appState.playhead);
+    // appState.playing = false;
+  }
+
+  float width = ImGui::CalcItemWidth();
+
+  {
+    ImGui::PlotConfig plot_config;
+    plot_config.frame_size = ImVec2(width, 100);
+    plot_config.values.ys = GetData();
+    plot_config.values.count = DataLen();
+    plot_config.scale.min = -1.0f;
+    plot_config.scale.max = 1.0f;
+    plot_config.selection.show = true;
+    plot_config.selection.start = &appState.selection_start;
+    plot_config.selection.length = &appState.selection_length;
+    // plot_config.overlay_text = "Hello";
+    if (ImGui::Plot("DAT", plot_config) == ImGui::PlotStatus::selection_updated) {
+      Seek(appState.selection_start * LengthInSeconds() / DataLen());
+      // appState.playing = false;
+      appState.selection_length = fmax(appState.selection_length, 256);
+    }
+
+    // ImVec2 size = ImGui::GetItemRectSize();
+    ImVec2 corner = ImGui::GetItemRectMax();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+      corner -= ImGui::GetWindowPos();
+    }
+
+    ImGui::SameLine(0,style.ItemInnerSpacing.x);
+    ImGui::Text("DAT");
+  }
 
   ImGui::SameLine();
 
