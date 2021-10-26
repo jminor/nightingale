@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "imgui.h"
+
 #include "audio.h"
+#include "widgets.h"
 #include "imguihelper.h"
 #include "imgui_plot.h"
 #include "imguifilesystem.h"
@@ -383,32 +386,10 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
   );
 }
 
-bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f, float hover_extend=0.0f)
-{
-    using namespace ImGui;
-    ImGuiContext& g = *GImGui;
-    ImGuiWindow* window = g.CurrentWindow;
-    ImGuiID id = window->GetID("##Splitter");
-    ImRect bb;
-    bb.Min = window->DC.CursorPos + (split_vertically ? ImVec2(*size1, 0.0f) : ImVec2(0.0f, *size1));
-    bb.Max = bb.Min + CalcItemSize(split_vertically ? ImVec2(thickness, splitter_long_axis_size) : ImVec2(splitter_long_axis_size, thickness), 0.0f, 0.0f);
-    return ImGui::SplitterBehavior(
-      bb,
-      id,
-      split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, 
-      size1, 
-      size2, 
-      min_size1, 
-      min_size2, 
-      hover_extend,
-      0.0f    // hover_visibility_delay
-      );
-}
-
-float limit(float t, float small, float big)
-{
-  return fmin(fmax(t, small), big);
-}
+// float limit(float t, float small, float big)
+// {
+//   return fmin(fmax(t, small), big);
+// }
 
 void AppUpdate()
 {
@@ -567,13 +548,13 @@ void MainGui()
 
     if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None))
     {
-      if (ImGui::BeginTabItem("Audio"))
+      if (ImGui::BeginTabItem("AUD"))
       {
         DrawAudioPanel();
 
         ImGui::EndTabItem();
       }
-      if (ImGui::BeginTabItem("Theme"))
+      if (ImGui::BeginTabItem("THM"))
       {
         ImGui::ShowStyleEditor();
 
@@ -643,6 +624,7 @@ void DrawButtons(ImVec2 button_size)
 
   const bool browseButtonPressed = IconButton("\uF07C##Load", button_size);                          // we need a trigger boolean variable
   static ImGuiFs::Dialog dlg;
+  // ImGui::SetNextWindowPos(ImVec2(300,300));
   const char* chosenPath = dlg.chooseFileDialog(
     browseButtonPressed,
     dlg.getLastDirectory(),
@@ -670,17 +652,50 @@ void DrawButtons(ImVec2 button_size)
   }
 }
 
+void ComputeAndDrawVolumeMeter(ImVec2 size)
+{
+  static float peak = 0;
+  static float volume = 0;
+  float max_sample = 0;
+  float* data = appState.audio.getWave();
+  for (int i=0; i<256; i++) {
+    if (data[i] > max_sample) max_sample = data[i];
+  }
+
+  volume = volume * 0.9f + max_sample * 0.1f;
+  peak = fmax(volume, peak - 0.001f);
+
+  DrawVolumeMeter(
+    "Audio Meter",
+    size,
+    volume,
+    peak
+  );
+
+  // float dB = 20.0f * log10(volume);
+  // ImGui::Text("%f dB", dB);
+
+}
+
 void DrawAudioPanel()
 {
   // ImGuiStyle& style = ImGui::GetStyle();
   ImGuiIO& io = ImGui::GetIO();
 
-  if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
+  ComputeAndDrawVolumeMeter(ImVec2(100,100));
+
+  ImGui::SameLine();
+
+  if (KnobFloat("VOL", &appState.volume, 0.01f, 0.0f, 1.0f, "%.2f")) {
     appState.audio.setVolume(appState.audio_handle, appState.volume);
   }
 
+  // if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f, "%.2f")) {
+  //   appState.audio.setVolume(appState.audio_handle, appState.volume);
+  // }
+
   float duration = LengthInSeconds();
-  if (ImGui::SliderFloat("Playhead", &appState.playhead, 0.0f, duration)) {
+  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration)) {
     Seek(appState.playhead);
     appState.playing = false;
   }
@@ -689,7 +704,7 @@ void DrawAudioPanel()
 
   if (appState.source == &appState.wav || appState.source == &appState.mp3) {
     ImGui::PlotLines(
-      "Waveform\nDetail",
+      "WAV",
       GetData() + appState.selection_start,
       appState.selection_length / GetChannels(),  // values_count
       0,    // values_offset
@@ -701,11 +716,11 @@ void DrawAudioPanel()
       );
     uint32_t low = 256;
     uint32_t high = appState.source->mBaseSamplerate;
-    ImGui::SliderScalar("Zoom", ImGuiDataType_U32, &appState.selection_length, &low, &high);
+    ImGui::SliderScalar("Z##WAV", ImGuiDataType_U32, &appState.selection_length, &low, &high);
   }else{
     // this shows the mixed output waveform
     ImGui::PlotLines(
-      "Live Waveform",
+      "WAV",
       appState.audio.getWave(),
       256,  // values_count
       0,    // values_offset
@@ -726,7 +741,7 @@ void DrawAudioPanel()
     FLT_MAX, // scale_max
     ImVec2(width,100) // graph_size
     );
-  ImGui::SliderInt("Zoom##FFT", &fft_zoom, 16, 256);
+  ImGui::SliderInt("Z##FFT", &fft_zoom, 16, 256);
 
   ImGui::PlotConfig plot_config;
   plot_config.frame_size = ImVec2(width, 100);
@@ -738,7 +753,7 @@ void DrawAudioPanel()
   plot_config.selection.start = &appState.selection_start;
   plot_config.selection.length = &appState.selection_length;
   // plot_config.overlay_text = "Hello";
-  if (ImGui::Plot("Data", plot_config) == ImGui::PlotStatus::selection_updated) {
+  if (ImGui::Plot("DAT", plot_config) == ImGui::PlotStatus::selection_updated) {
     Seek(appState.selection_start * LengthInSeconds() / DataLen());
     appState.playing = false;
     appState.selection_length = fmax(appState.selection_length, 256);
@@ -751,38 +766,7 @@ void DrawAudioPanel()
   }
 
   ImGui::SameLine();
-  ImGui::Text("Waveform\nFull");
-
-  static float peak = 0;
-  static float volume = 0;
-  float max_sample = 0;
-  float* data = appState.audio.getWave();
-  for (int i=0; i<256; i++) {
-    if (data[i] > max_sample) max_sample = data[i];
-  }
-
-  volume = volume * 0.9f + max_sample * 0.1f;
-  peak = fmax(volume, peak - 0.001f);
-
-  // ImGui::SetCursorPos(
-  //   ImVec2(
-  //     corner.x + style.ItemSpacing.x,
-  //     corner.y - size.y
-  //   )
-  // );
-
-  size.y *= 0.7f;
-  size.x = 85;
-
-  DrawVolumeMeter(
-    "Audio Meter",
-    size,
-    volume,
-    peak
-  );
-
-  // float dB = 20.0f * log10(volume);
-  // ImGui::Text("%f dB", dB);
+  ImGui::Text("DAT");
 
   ImGui::Spacing();
 
