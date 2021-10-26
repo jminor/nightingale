@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "imgui.h"
+
 #include "audio.h"
 #include "embedded_font_ShareTechMono.inc"
 #include "embedded_font_fontawesome.inc"
@@ -590,14 +592,53 @@ void DrawButtons(ImVec2 button_size)
     }
 }
 
+void ComputeAndDrawVolumeMeter(ImVec2 size)
+{
+  static float peak = 0;
+  static float volume = 0;
+  float max_sample = 0;
+  float* data = appState.audio.getWave();
+  for (int i=0; i<256; i++) {
+    if (data[i] > max_sample) max_sample = data[i];
+  }
+
+  volume = volume * 0.9f + max_sample * 0.1f;
+  peak = fmax(volume, peak - 0.001f);
+
+  DrawVolumeMeter(
+    "Audio Meter",
+    size,
+    volume,
+    peak
+  );
+
+  // float dB = 20.0f * log10(volume);
+  // ImGui::Text("%f dB", dB);
+
+}
+
 void DrawAudioPanel()
 {
     // ImGuiStyle& style = ImGui::GetStyle();
     ImGuiIO& io = ImGui::GetIO();
 
-    // ImGui::PushItemWidth(-100);
+  ComputeAndDrawVolumeMeter(ImVec2(100,100));
 
-    // DrawButtons();
+  ImGui::SameLine();
+
+  if (KnobFloat("VOL", &appState.volume, 0.01f, 0.0f, 1.0f, "%.2f")) {
+    appState.audio.setVolume(appState.audio_handle, appState.volume);
+  }
+
+  // if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f, "%.2f")) {
+  //   appState.audio.setVolume(appState.audio_handle, appState.volume);
+  // }
+
+  float duration = LengthInSeconds();
+  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration)) {
+    Seek(appState.playhead);
+    appState.playing = false;
+  }
 
     if (appState.playing) {
         // ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0); // = 30fps
