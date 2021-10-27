@@ -21,6 +21,7 @@
 
 void DrawAudioPanel();
 void DrawButtons(ImVec2 button_size);
+
 void LoadAudio(const char* path);
 void Play();
 void Pause();
@@ -32,9 +33,11 @@ void Seek(float time);
 #include "app.h"
 
 AppState appState;
+
 ImFont *gTechFont = nullptr;
 ImFont *gIconFont = nullptr;
 
+// Log a message to the terminal
 void Log(const char* format, ...)
 {
   va_list args;
@@ -45,6 +48,7 @@ void Log(const char* format, ...)
   va_end(args);
 }
 
+// Display a message in the GUI (and to the terminal)
 void Message(const char* format, ...)
 {
   va_list args;
@@ -54,13 +58,13 @@ void Message(const char* format, ...)
   Log(appState.message);
 }
 
-//   Files in the application fonts/ folder are embedded automatically
-//   (on iOS/Android/Emscripten)
+// Files in the application fonts/ folder are supposed to be embedded
+// automatically (on iOS/Android/Emscripten), but that's not wired up.
 void LoadFonts()
 {
   ImGuiIO& io = ImGui::GetIO();
 
-  // TODO: Use ImGuiFontStudio to bundle these fonts into the executable.
+  // TODO: Use ImGuiFontStudio to bundle these fonts into the executable?
 #ifdef EMSCRIPTEN
   Log("Skipping font loading on EMSCRIPTEN platform.");
   gTechFont = io.Fonts->AddFontDefault();
@@ -149,15 +153,21 @@ void NextTrack()
 {
   ImGuiFs::PathStringVector files;
   ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
+  // If there's no files in there, we're done.
   if (files.size() == 0) {
     return;
   }
+  // Look through all but the last one...
   for(int i=0; i<files.size()-1; i++) {
+    // If it matches the one we're on currently...
     if (!strcmp(files[i], appState.file_path)) {
+      // Load the next one.
       LoadAudio(files[i+1]);
       return;
     }
   }
+  // Didn't find it, so just pick the first one.
+  // This works for wrap around, or if the file is not found.
   LoadAudio(files.front());
 }
 
@@ -168,6 +178,7 @@ void PrevTrack()
   if (files.size() == 0) {
     return;
   }
+  // Same strategy as NextTrack, but look at all but the first one.
   for(int i=1; i<files.size(); i++) {
     if (!strcmp(files[i], appState.file_path)) {
       LoadAudio(files[i-1]);
@@ -179,6 +190,7 @@ void PrevTrack()
 
 void LoadAudio(const char* path)
 {
+  // Stop playing, otherwise the songs double-up
   Stop();
 
   appState.source = NULL;
@@ -186,13 +198,19 @@ void LoadAudio(const char* path)
 
   strncpy(appState.file_path, path, sizeof(appState.file_path));
 
+  if (strlen(path) < 4) {
+    Message("Invalid file path: %s", path);
+    return;
+  }
+
   SoLoud::result err=0;
-  if (!strncmp(".mp3", path+strlen(path)-4, 4)) {
+  const char* ext = path+strlen(path) - 4;
+  if (!strncmp(".mp3", ext, 4)) {
     err = appState.mp3.load(path);
     if (!err) {
       appState.source = &appState.mp3;
     }
-  }else if (!strncmp(".wav", path+strlen(path)-4, 4)) {
+  }else if (!strncmp(".wav", ext, 4)) {
     err = appState.wav.load(path);
     if (!err) {
       appState.source = &appState.wav;
@@ -219,7 +237,8 @@ void MainInit()
 
   SoLoud::result err = appState.audio.init();
   if (err) {
-    Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
+    Message("AUDIO FAIL: %s", appState.audio.getErrorString(err));
+    return;
   }
 
   // LoadAudio("/Users/jminor/git/nightingale/audio/anomaly.wav");
@@ -230,6 +249,7 @@ void MainCleanup()
   appState.audio.deinit();
 }
 
+// Get the raw audio sample buffer (see also DataLen())
 float* GetData()
 {
   if (appState.source == &appState.wav) {
@@ -242,6 +262,7 @@ float* GetData()
   return 0;
 }
 
+// Get the length, in samples, of the raw audio buffer (see also GetData())
 unsigned int DataLen()
 {
   if (appState.source == &appState.wav) {
@@ -254,6 +275,7 @@ unsigned int DataLen()
   return 0;
 }
 
+// How many channels are in the raw audio buffer?
 int GetChannels()
 {
   if (appState.source) {
@@ -262,6 +284,9 @@ int GetChannels()
   return 1;
 }
 
+// How long, in seconds, is the current audio source?
+// Note that Modplug length estimate may be wrong due
+// to looping, halting problem, etc.
 float LengthInSeconds()
 {
   if (appState.source == &appState.wav) {
@@ -328,13 +353,13 @@ ImU32 ImLerpColors(ImU32 col_a, ImU32 col_b, float t)
     return IM_COL32(r, g, b, a);
 }
 
-float qqq(float v) {
+// The volume meter looks low most of the time, so boost it up a bit
+float boost(float v) {
   return 1.0f - (1.0f - v) * (1.0f - v);
 }
 
 void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
 {
-  // ImGuiIO& io = ImGui::GetIO();
   ImGuiStyle& style = ImGui::GetStyle();
   ImGuiWindow* window = ImGui::GetCurrentWindow();
   ImVec2 pos = window->DC.CursorPos; // in screen space
@@ -353,13 +378,13 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
   ImU32 volume_color = ImLerpColors(
     base_color,
     ImGui::GetColorU32(ImGuiCol_PlotHistogram),
-    qqq(volume)
+    boost(volume)
   );
   ImU32 peak_color = ImLerpColors(
     base_color,
     ImGui::GetColorU32(ImGuiCol_PlotHistogram),
     //IM_COL32(0xff, 0, 0, 0x88),
-    qqq(peak)
+    boost(peak)
   );
 
   dl->AddRectFilledMultiColor(
@@ -436,8 +461,6 @@ const char* timecode_from(float t) {
 void MainGui()
 {
   AppUpdate();
-
-  // ImGuiStyle& style = ImGui::GetStyle();
 
   ImGuiIO& io = ImGui::GetIO();
   ImVec2 displaySize = io.DisplaySize;
@@ -688,7 +711,6 @@ void DrawAudioPanel()
   float duration = LengthInSeconds();
   if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
     Seek(appState.playhead);
-    // appState.playing = false;
   }
 
   float width = ImGui::CalcItemWidth();
@@ -706,7 +728,6 @@ void DrawAudioPanel()
     // plot_config.overlay_text = "Hello";
     if (ImGui::Plot("DAT", plot_config) == ImGui::PlotStatus::selection_updated) {
       Seek(appState.selection_start * LengthInSeconds() / DataLen());
-      // appState.playing = false;
       appState.selection_length = fmax(appState.selection_length, 256);
     }
 
