@@ -29,9 +29,11 @@ void Seek(float time);
 #include "app.h"
 
 AppState appState;
+
 ImFont *gTechFont = nullptr;
 ImFont *gIconFont = nullptr;
 
+// Log a message to the terminal
 void Log(const char* format, ...)
 {
     va_list args;
@@ -42,6 +44,7 @@ void Log(const char* format, ...)
     va_end(args);
 }
 
+// Display a message in the GUI (and to the terminal)
 void Message(const char* format, ...)
 {
     va_list args;
@@ -51,8 +54,8 @@ void Message(const char* format, ...)
     Log(appState.message);
 }
 
-//   Files in the application fonts/ folder are embedded automatically
-//   (on iOS/Android/Emscripten)
+// Files in the application fonts/ folder are supposed to be embedded
+// automatically (on iOS/Android/Emscripten), but that's not wired up.
 void LoadFonts()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -210,23 +213,29 @@ void MainCleanup()
     tear_down_audio();
 }
 
+// Get the raw audio sample buffer (see also DataLen())
 float* GetData()
 {
     // TODO: num channels?
     return recent_data;
 }
 
+// Get the length, in samples, of the raw audio buffer (see also GetData())
 unsigned int DataLen()
 {
     // TODO: num channels?
     return sizeof(recent_data) / sizeof(float);
 }
 
+// How many channels are in the raw audio buffer?
 int GetChannels()
 {
   return num_channels();
 }
 
+// How long, in seconds, is the current audio source?
+// Note that Modplug length estimate may be wrong due
+// to looping, halting problem, etc.
 float LengthInSeconds()
 {
     if (num_samples() == 0) return 0;
@@ -283,8 +292,9 @@ ImU32 ImLerpColors(ImU32 col_a, ImU32 col_b, float t)
     return IM_COL32(r, g, b, a);
 }
 
-float qqq(float v) {
-    return 1.0f - (1.0f - v) * (1.0f - v);
+// The volume meter looks low most of the time, so boost it up a bit
+float boost(float v) {
+  return 1.0f - (1.0f - v) * (1.0f - v);
 }
 
 void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
@@ -306,13 +316,13 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
   ImU32 volume_color = ImLerpColors(
     base_color,
     ImGui::GetColorU32(ImGuiCol_PlotHistogram),
-    qqq(volume)
+    boost(volume)
   );
   ImU32 peak_color = ImLerpColors(
     base_color,
     ImGui::GetColorU32(ImGuiCol_PlotHistogram),
     //IM_COL32(0xff, 0, 0, 0x88),
-    qqq(peak)
+    boost(peak)
   );
 
     dl->AddRectFilledMultiColor(ImVec2(pos.x,
@@ -632,7 +642,6 @@ void DrawAudioPanel()
   float duration = LengthInSeconds();
   if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
     Seek(appState.playhead);
-    // appState.playing = false;
   }
 
   float width = ImGui::CalcItemWidth();
@@ -650,7 +659,6 @@ void DrawAudioPanel()
     // plot_config.overlay_text = "Hello";
     if (ImGui::Plot("DAT", plot_config) == ImGui::PlotStatus::selection_updated) {
       Seek(appState.selection_start * LengthInSeconds() / DataLen());
-      // appState.playing = false;
       appState.selection_length = fmax(appState.selection_length, 256);
     }
 
