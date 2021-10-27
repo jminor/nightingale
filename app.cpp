@@ -305,37 +305,41 @@ void Play()
     // do nothing
   }else if (appState.audio_handle) {
     appState.audio.setPause(appState.audio_handle, false);
+    appState.playing = true;
   }else{
     appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
     appState.audio.setLooping(appState.audio_handle, appState.loop);
+    appState.playing = true;
   }
 }
 
 void Pause()
 {
-  if (appState.source && appState.audio_handle) {
+  if (appState.audio_handle) {
     appState.audio.setPause(appState.audio_handle, true);
   }
+  appState.playing = false;
 }
 
 void Stop()
 {
-  appState.audio.stopAll();
+  Pause();
+  Seek(0);
+  // Don't clear the source or audio_handle, so we can hit Play() again.
+  // appState.audio.stopAll();
+  // Log("Stopped");
 }
 
 void Seek(float time)
 {
+  // Don't stop, just seek
   appState.playhead = time;
-  // if (appState.audio_handle) {
-  //   appState.audio.setPause(appState.audio_handle, true);
-  // }else{
-  //   appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
-  //   appState.audio.setLooping(appState.audio_handle, appState.loop);
-  // }
   appState.audio.seek(appState.audio_handle, appState.playhead);
+  // Move the selection
   appState.selection_start = DataLen() * (appState.playhead / LengthInSeconds());
 }
 
+// Make a button using the fancy icon font
 bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
 {
   ImGui::PushFont(gIconFont);
@@ -412,31 +416,38 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
   );
 }
 
-// float limit(float t, float small, float big)
-// {
-//   return fmin(fmax(t, small), big);
-// }
-
 void AppUpdate()
 {
-  bool was_playing = appState.playing;
-  appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
+  // Ask the audio system if we're still playing
+  bool valid_handle = appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle);
+  bool should_be_playing = appState.playing;
+  bool actually_playing = valid_handle && !appState.audio.getPause(appState.audio_handle);
 
-  if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
+  if (should_be_playing && !actually_playing) {
+    // No longer playing
+    appState.playing = false;
+  }
+
+  if (valid_handle) {
     appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
+    // Deal with looping (getStreamTime just keeps going beyond the song duration)
     appState.playhead = fmodf(appState.playhead, LengthInSeconds());
   }else{
+    // The song stopped, so forget the handle
     appState.audio_handle = 0;
     appState.playhead = 0.0;
-    if (was_playing && !appState.playing) {
+    // Did playback stop suddenly, like we hit the end of the song?
+    if (should_be_playing && !actually_playing) {
       if (appState.loop) {
+        // Log("Looping");
         Play();
       }else{
+        // Log("Skipping to next track");
         NextTrack();
       }
     }
   }
-  if (appState.playing) {
+  if (actually_playing) {
     appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
   }
 }
