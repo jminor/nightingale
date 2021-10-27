@@ -241,11 +241,13 @@ void MainInit()
     return;
   }
 
-  // LoadAudio("/Users/jminor/git/nightingale/audio/anomaly.wav");
+  // QueueFolder("/Users/jminor/git/nightingale/audio");
+  // NextTrack();
 }
 
 void MainCleanup()
 {
+  appState.audio.stopAll();
   appState.audio.deinit();
 }
 
@@ -536,6 +538,7 @@ void MainGui()
       );
 
   if (!appState.show_main_window) {
+    MainCleanup();
     exit(0);
   }
 
@@ -545,6 +548,7 @@ void MainGui()
     );
 
   if (IconButton("\uF00D", button_size)) {
+    MainCleanup();
     exit(0);
   }
   ImGui::SameLine();
