@@ -125,15 +125,18 @@ bool KnobScalar(const char* label, ImGuiDataType data_type, void* p_data, float 
 
     ImDrawList *dl = window->DrawList;
     ImVec2 center = frame_bb.GetCenter();
+
     dl->PathClear();
     dl->PathLineTo(center);
     dl->PathArcTo(center, w/2, IM_PI*0.75, IM_PI*(t*1.5 + 0.75));
     dl->PathLineTo(center);
     dl->PathFillConvex(ImGui::GetColorU32(ImGuiCol_SliderGrab));
+
     dl->PathClear();
     dl->PathArcTo(center, w/2, IM_PI*0.749, IM_PI*(t*1.5 + 0.75));
     dl->PathLineTo(center);
     dl->PathStroke(ImGui::GetColorU32(ImGuiCol_Border), 0, style.FrameBorderSize*2);
+
     dl->AddCircleFilled(center, w/4, IM_COL32_BLACK); //ImGui::GetColorU32(ImGuiCol_FrameBg));
 
     // Drag behavior
@@ -147,8 +150,6 @@ bool KnobScalar(const char* label, ImGuiDataType data_type, void* p_data, float 
     if (g.LogEnabled)
         ImGui::LogSetNextTextDecoration("{", "}");
     ImGui::RenderTextClipped(frame_bb.Min, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
-    // ImGui::RenderTextClipped(ImVec2(frame_bb.Min.x, center.y), frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
-    // ImGui::RenderTextClipped(frame_bb.Min, ImVec2(frame_bb.Max.x, center.y), value_buf, value_buf_end, NULL, ImVec2(0.5f, 0.5f));
 
     if (label_size.x > 0.0f)
         ImGui::RenderText(ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y), label);
