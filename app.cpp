@@ -381,20 +381,24 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
   ImU32 base_color = ImGui::GetColorU32(ImGuiCol_FrameBg);
   ImU32 volume_color = ImLerpColors(
     base_color,
-    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    ImGui::GetColorU32(ImGuiCol_SliderGrab),
     boost(volume)
   );
   ImU32 peak_color = ImLerpColors(
     base_color,
-    ImGui::GetColorU32(ImGuiCol_PlotHistogram),
+    ImGui::GetColorU32(ImGuiCol_SliderGrab),
     //IM_COL32(0xff, 0, 0, 0x88),
     boost(peak)
   );
+  ImU32 highlight_color = ImGui::GetColorU32(ImGuiCol_Border);
+
+  float volume_y = pos.y + size.y * (1.0 - volume);
+  float peak_y = pos.y + size.y * (1.0 - peak);
 
   dl->AddRectFilledMultiColor(
     ImVec2(
       pos.x,
-      pos.y + size.y * (1.0 - peak)
+      peak_y
     ),
     pos + size,
     peak_color,
@@ -403,10 +407,23 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
     base_color
   );
 
+  dl->AddLine(
+    ImVec2(
+      pos.x,
+      peak_y
+    ),
+    ImVec2(
+      pos.x + size.x,
+      peak_y
+    ),
+    highlight_color,
+    2.0f
+  );
+
   dl->AddRectFilledMultiColor(
     ImVec2(
       pos.x,
-      pos.y + size.y * (1.0 - volume)
+      volume_y
     ),
     pos + size,
     volume_color,
@@ -414,6 +431,19 @@ void DrawVolumeMeter(const char *label, ImVec2 size, float volume, float peak)
     base_color,
     base_color
   );
+
+  dl->AddLine(
+    ImVec2(
+      pos.x,
+      volume_y
+    ),
+    ImVec2(
+      pos.x + size.x,
+      volume_y
+    ),
+    highlight_color,
+    2.0f
+    );
 }
 
 void AppUpdate()
