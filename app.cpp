@@ -676,7 +676,7 @@ void DrawButtons(ImVec2 button_size)
     );
   ImGui::PushStyleColor(
     ImGuiCol_Border, 
-    style.Colors[appState.loop ? ImGuiCol_NavHighlight : ImGuiCol_Border]
+    style.Colors[appState.loop ? ImGuiCol_PlotLines : ImGuiCol_Border]
     );
   if (IconButton("\uF021##Loop", button_size)) {
     appState.loop = !appState.loop;
