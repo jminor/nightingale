@@ -33,6 +33,9 @@ struct AppState
   SoLoud::Modplug mod;
   SoLoud::Mp3 mp3;
 
+  ImTextureID image;
+  ImVec2 image_size;
+
   bool show_main_window = true;
   bool mini_mode = false;
   bool show_style_editor = false;

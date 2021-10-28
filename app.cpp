@@ -19,8 +19,14 @@
 #include <SDL.h>
 #endif
 
+bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size);
+
+
 void DrawAudioPanel();
 void DrawButtons(ImVec2 button_size);
+
+void LoadFonts();
+void LoadImages();
 
 void LoadAudio(const char* path);
 void Play();
@@ -234,6 +240,7 @@ void MainInit()
   Style_Mono();
 
   LoadFonts();
+  LoadImages();
 
   SoLoud::result err = appState.audio.init();
   if (err) {
@@ -501,6 +508,31 @@ const char* timecode_from(float t) {
   return buffer;
 }
 
+
+
+void LoadImages()
+{
+  // ImGuiIO& io = ImGui::GetIO();
+  // appState.image = io.Fonts->TexID;
+  // appState.image_size = ImVec2(io.Fonts->TexWidth, io.Fonts->TexHeight);
+ 
+  if (!LoadTexture("/Users/jminor/git/nightingale/Hilda.jpg", &appState.image, &appState.image_size)) {
+    Log("Texture load FAIL");
+  }
+
+  fprintf(stderr, "image = %p (%g x %g)\n", appState.image, appState.image_size.x, appState.image_size.y);
+  Log("hey");
+}
+
+void DrawImage(ImTextureID tex_id, ImVec2 size)
+{
+  ImVec2 uv_min = ImVec2(0.0f, 0.0f);                 // Top-left
+  ImVec2 uv_max = ImVec2(1.0f, 1.0f);                 // Lower-right
+  ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
+  ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f); // 50% opaque white
+  ImGui::Image(tex_id, size, uv_min, uv_max, tint_col, border_col);
+}
+
 void MainGui()
 {
   AppUpdate();
@@ -574,6 +606,8 @@ void MainGui()
 
   ImGui::SameLine();
   DrawButtons(button_size);
+
+  DrawImage(appState.image, appState.image_size);
 
   // ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - button_size.x + style.ItemSpacing.x);
 

@@ -761,3 +761,73 @@ static void ImGui_ImplOpenGL3_ShutdownPlatformInterface()
 {
     ImGui::DestroyPlatformWindows();
 }
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size)
+{
+  if (path==NULL || tex_id==NULL || size==NULL) return false;
+
+    // Build texture atlas
+    // ImGuiIO& io = ImGui::GetIO();
+    unsigned char* pixels = NULL;
+    int width=0, height=0;
+    // io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    // Load as RGBA 32-bit (75% of the memory is wasted, but default 
+    // font is so small) because it is more likely to be compatible 
+    // with user's existing shaders. If your ImTextureId represent a 
+    // higher-level concept than just a GL texture id, consider calling 
+    // GetTexDataAsAlpha8() instead to save on GPU memory.
+
+    // width = 100;
+    // height = 100;
+    // pixels = (unsigned char*)calloc(width * height * 4, sizeof(unsigned char));
+    // for (int x=0; x<width; x++) {
+    //     for (int y=0; y<height; y++) {
+    //         pixels[(x+y*width)*4+0] = 0xFF; // R
+    //         pixels[(x+y*width)*4+1] = 0x88; // G
+    //         pixels[(x+y*width)*4+2] = 0x44; // B
+    //         pixels[(x+y*width)*4+3] = 0xFF; // A
+    //    }
+    // }
+
+    //    int x,y,n;
+    int channels=0;
+    pixels = stbi_load(path, &width, &height, &channels, 4);
+
+    if (pixels==NULL || width<=0 || height<=0) {
+      return false;
+    }
+
+    *size = ImVec2(width, height);
+
+    // Upload texture to graphics system
+    GLint last_texture;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+    glGenTextures(1, (GLuint*)tex_id);
+    if (!*tex_id) return false;
+    glBindTexture(GL_TEXTURE_2D, *(GLuint*)tex_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#ifdef GL_UNPACK_ROW_LENGTH
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    // Restore state
+    glBindTexture(GL_TEXTURE_2D, last_texture);
+
+    stbi_image_free(pixels);
+
+    return true;
+}
+
+void DestroyTexture(ImTextureID *tex_id)
+{
+    if (tex_id && *tex_id)
+    {
+        glDeleteTextures(1, (GLuint*)tex_id);
+    }
+}
+
