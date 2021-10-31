@@ -609,19 +609,33 @@ void MainGui()
       loaded_frames++;
     }
   }
+
+  static float fps = 30.0;
+
   static double last_frame_time = ImGui::GetTime();
   double now = ImGui::GetTime();
-  ImGui::SetMaxWaitBeforeNextFrame(1.0/30.0 - (now-last_frame_time));
+  // double desired_fps = 60.0;
+  // double desired_frame_duration = 1.0 / desired_fps;
+  double duration_of_last_frame = now - last_frame_time;
+  // double last_frame_error = duration_of_last_frame - desired_frame_duration;
+  // double waiting_time = fmin(desired_frame_duration, desired_frame_duration - last_frame_error);
+  // ImGui::SetMaxWaitBeforeNextFrame(fmax(0, waiting_time));
+  // Conclusion: SetMaxWaitBeforeNextFrame is not suitable for playback rate control.
+
+  float waiting_time = 1.0/fps;
   frame++;
+  last_frame_time = now;
 
   if (video_frame.texture) {
     DrawImage(video_frame.texture, video_frame.size);
   }
-  ImGui::Text("Frame %d of %d @ %.1f ft %0.1f", frame, loaded_frames, io.Framerate, 1.0/(now-last_frame_time));
-  last_frame_time = now;
+  ImGui::Text("Frame %d of %d @ %.1f wait %0.3f dur %0.3f", frame, loaded_frames, io.Framerate, waiting_time, duration_of_last_frame);
 
   ImGui::SliderInt("Frame", &frame, 1, appState.num_frames);
   ImGui::DragIntRange2("Loop", &appState.loop_start, &appState.loop_end, 1.0f, 1, appState.num_frames);
+
+  ImGui::SliderFloat("FPS", &fps, 1.0, 120.0);
+  ImGui::SetMaxWaitBeforeNextFrame(waiting_time);
 
   // ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - button_size.x + style.ItemSpacing.x);
 
