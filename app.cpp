@@ -26,7 +26,6 @@ void DrawAudioPanel();
 void DrawButtons(ImVec2 button_size);
 
 void LoadFonts();
-void LoadImages();
 
 void LoadAudio(const char* path);
 void Play();
@@ -240,7 +239,6 @@ void MainInit()
   Style_Mono();
 
   LoadFonts();
-  LoadImages();
 
   SoLoud::result err = appState.audio.init();
   if (err) {
@@ -508,22 +506,6 @@ const char* timecode_from(float t) {
   return buffer;
 }
 
-
-
-void LoadImages()
-{
-  // ImGuiIO& io = ImGui::GetIO();
-  // appState.image = io.Fonts->TexID;
-  // appState.image_size = ImVec2(io.Fonts->TexWidth, io.Fonts->TexHeight);
- 
-  if (!LoadTexture("/Users/jminor/git/nightingale/Hilda.jpg", &appState.image, &appState.image_size)) {
-    Log("Texture load FAIL");
-  }
-
-  fprintf(stderr, "image = %p (%g x %g)\n", appState.image, appState.image_size.x, appState.image_size.y);
-  Log("hey");
-}
-
 void DrawImage(ImTextureID tex_id, ImVec2 size)
 {
   ImVec2 uv_min = ImVec2(0.0f, 0.0f);                 // Top-left
@@ -608,17 +590,38 @@ void MainGui()
   DrawButtons(button_size);
 
   static int frame=1;
-  char path[256];
-  snprintf(path, sizeof(path), "/tmp/foo.%d.jpg", frame++);
-  if (appState.image) {
-    DestroyTexture(&appState.image);
+  static int loaded_frames=0;
+  if (frame >= appState.num_frames) {
+    frame = appState.loop_start;
   }
-  if (!LoadTexture(path, &appState.image, &appState.image_size)) {
-    frame=1;
+  if (appState.loop_end > appState.loop_start && frame > appState.loop_end) {
+    frame = appState.loop_start;
   }
-  ImGui::SetMaxWaitBeforeNextFrame(1.0/60.0);
+  VideoFrame &video_frame = appState.frames[frame];
+  if (video_frame.texture == 0) {
+    char path[256];
+    snprintf(path, sizeof(path), "/tmp/foo.%d.png", frame);
+    if (!LoadTexture(path, &video_frame.texture, &video_frame.size)) {
+      fprintf(stderr, "Failed to load: %s\n", path);
+      video_frame.texture = 0;
+      appState.loop_end = frame-1;
+    }else{
+      loaded_frames++;
+    }
+  }
+  static double last_frame_time = ImGui::GetTime();
+  double now = ImGui::GetTime();
+  ImGui::SetMaxWaitBeforeNextFrame(1.0/30.0 - (now-last_frame_time));
+  frame++;
 
-  DrawImage(appState.image, appState.image_size);
+  if (video_frame.texture) {
+    DrawImage(video_frame.texture, video_frame.size);
+  }
+  ImGui::Text("Frame %d of %d @ %.1f ft %0.1f", frame, loaded_frames, io.Framerate, 1.0/(now-last_frame_time));
+  last_frame_time = now;
+
+  ImGui::SliderInt("Frame", &frame, 1, appState.num_frames);
+  ImGui::DragIntRange2("Loop", &appState.loop_start, &appState.loop_end, 1.0f, 1, appState.num_frames);
 
   // ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - button_size.x + style.ItemSpacing.x);
 

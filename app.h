@@ -10,6 +10,12 @@
 #include "imguifilesystem.h"
 #include "imgui_internal.h"
 
+struct VideoFrame
+{
+  ImTextureID texture = 0;
+  ImVec2 size = ImVec2(0,0);
+};
+
 // Struct that holds the application's state
 struct AppState
 {
@@ -33,8 +39,10 @@ struct AppState
   SoLoud::Modplug mod;
   SoLoud::Mp3 mp3;
 
-  ImTextureID image;
-  ImVec2 image_size;
+  int num_frames = 1024;
+  VideoFrame frames[1024];
+  int loop_start = 1;
+  int loop_end = 1;
 
   bool show_main_window = true;
   bool mini_mode = false;
