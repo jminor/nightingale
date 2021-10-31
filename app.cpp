@@ -20,7 +20,7 @@
 #endif
 
 bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size);
-
+void DestroyTexture(ImTextureID *tex_id);
 
 void DrawAudioPanel();
 void DrawButtons(ImVec2 button_size);
@@ -606,6 +606,17 @@ void MainGui()
 
   ImGui::SameLine();
   DrawButtons(button_size);
+
+  static int frame=1;
+  char path[256];
+  snprintf(path, sizeof(path), "/tmp/foo.%d.jpg", frame++);
+  if (appState.image) {
+    DestroyTexture(&appState.image);
+  }
+  if (!LoadTexture(path, &appState.image, &appState.image_size)) {
+    frame=1;
+  }
+  ImGui::SetMaxWaitBeforeNextFrame(1.0/60.0);
 
   DrawImage(appState.image, appState.image_size);
 

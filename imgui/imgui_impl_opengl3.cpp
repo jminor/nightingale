@@ -769,30 +769,9 @@ bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size)
 {
   if (path==NULL || tex_id==NULL || size==NULL) return false;
 
-    // Build texture atlas
-    // ImGuiIO& io = ImGui::GetIO();
     unsigned char* pixels = NULL;
     int width=0, height=0;
-    // io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-    // Load as RGBA 32-bit (75% of the memory is wasted, but default 
-    // font is so small) because it is more likely to be compatible 
-    // with user's existing shaders. If your ImTextureId represent a 
-    // higher-level concept than just a GL texture id, consider calling 
-    // GetTexDataAsAlpha8() instead to save on GPU memory.
 
-    // width = 100;
-    // height = 100;
-    // pixels = (unsigned char*)calloc(width * height * 4, sizeof(unsigned char));
-    // for (int x=0; x<width; x++) {
-    //     for (int y=0; y<height; y++) {
-    //         pixels[(x+y*width)*4+0] = 0xFF; // R
-    //         pixels[(x+y*width)*4+1] = 0x88; // G
-    //         pixels[(x+y*width)*4+2] = 0x44; // B
-    //         pixels[(x+y*width)*4+3] = 0xFF; // A
-    //    }
-    // }
-
-    //    int x,y,n;
     int channels=0;
     pixels = stbi_load(path, &width, &height, &channels, 4);
 
