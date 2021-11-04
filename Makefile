@@ -25,7 +25,7 @@ UNAME_S := $(shell uname -s)
 
 CXXFLAGS = -I. -I./imgui
 CXXFLAGS += -g -Wall -Wformat
-LIBS =
+LIBS = -lavcodec -lavformat -lavutil
 
 ##---------------------------------------------------------------------
 ## OPENGL LOADER

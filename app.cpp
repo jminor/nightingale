@@ -19,7 +19,13 @@
 #include <SDL.h>
 #endif
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+}
+
 bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size);
+bool MakeTexture(const unsigned char *pixels, ImTextureID *tex_id, ImVec2 size);
 void DestroyTexture(ImTextureID *tex_id);
 
 void DrawAudioPanel();
@@ -489,6 +495,163 @@ void AppUpdate()
   }
 }
 
+AVCodec *av_codec = NULL;
+AVCodecParserContext *av_parser = NULL;
+AVCodecContext *av_context = NULL;
+AVPacket *av_packet = NULL;
+AVFrame *av_frame = NULL;
+#define BUFFER_SIZE 4096
+uint8_t av_buffer[BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
+uint8_t *av_data = NULL;
+size_t   av_data_size = 0;
+FILE *av_file = NULL;
+
+bool OpenVideo(const char *filename)
+{
+    av_packet = av_packet_alloc();
+    if (!av_packet)
+        return false;
+
+    // set end of buffer to 0 (this ensures that no overreading happens for damaged MPEG streams)
+    memset(av_buffer + BUFFER_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+
+    /* find the MPEG-1 video decoder */
+    av_codec = avcodec_find_decoder(AV_CODEC_ID_MPEG1VIDEO);
+    if (!av_codec) {
+        fprintf(stderr, "Codec not found\n");
+        return false;
+    }
+
+    av_parser = av_parser_init(av_codec->id);
+    if (!av_parser) {
+        fprintf(stderr, "parser not found\n");
+        return false;
+    }
+
+    av_context = avcodec_alloc_context3(av_codec);
+    if (!av_context) {
+        fprintf(stderr, "Could not allocate video codec context\n");
+        return false;
+    }
+
+    /* For some codecs, such as msmpeg4 and mpeg4, width and height
+       MUST be initialized there because this information is not
+       available in the bitstream. */
+
+    /* open it */
+    if (avcodec_open2(av_context, av_codec, NULL) < 0) {
+        fprintf(stderr, "Could not open codec\n");
+        return false;
+    }
+
+    av_file = fopen(filename, "rb");
+    if (!av_file) {
+        fprintf(stderr, "Could not open %s\n", filename);
+        return false;
+    }
+
+    av_frame = av_frame_alloc();
+    if (!av_frame) {
+        fprintf(stderr, "Could not allocate video frame\n");
+        return false;
+    }
+
+    return true;
+}
+
+static bool DecodeVideoFrame(
+  AVCodecContext *dec_ctx,
+  AVFrame *frame,
+  AVPacket *pkt,
+  VideoFrame &video_frame
+  )
+{
+    int ret;
+
+    ret = avcodec_send_packet(dec_ctx, pkt);
+    if (ret < 0) {
+        fprintf(stderr, "Error sending a packet for decoding\n");
+        return false;
+    }
+
+    while (ret >= 0) {
+        ret = avcodec_receive_frame(dec_ctx, frame);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            return false;
+        else if (ret < 0) {
+            fprintf(stderr, "Error during decoding\n");
+            return false;
+        }
+
+        fprintf(stderr, "decoded frame %d\n", dec_ctx->frame_number);
+        fflush(stderr);
+
+        // the picture is allocated by the decoder. no need to free it
+        // snprintf(buf, sizeof(buf), "%s-%d", filename, dec_ctx->frame_number);
+        // pgm_save(frame->data[0], frame->linesize[0],
+        //          frame->width, frame->height, buf);
+        video_frame.size = ImVec2(frame->width, frame->height);
+        return MakeTexture(frame->data[0], &video_frame.texture, video_frame.size);
+    }
+    return false;
+}
+
+bool LoadNextVideoFrame(VideoFrame &video_frame)
+{
+    if (av_codec == NULL) {
+      if (!OpenVideo("/Users/jminor/Movies/zeroing.mp4")) {
+        return false;
+      }
+    }
+
+    while (!feof(av_file)) {
+        // read raw data from the input file
+        if (av_data_size == 0) {
+          av_data_size = fread(av_buffer, 1, BUFFER_SIZE, av_file);
+          if (!av_data_size)
+              break;
+          av_data = av_buffer;
+        }
+
+        /* use the parser to split the data into frames */
+        while (av_data_size > 0) {
+            int ret = av_parser_parse2(
+              av_parser,
+              av_context,
+              &av_packet->data,
+              &av_packet->size,
+              av_data,
+              av_data_size,
+              AV_NOPTS_VALUE,
+              AV_NOPTS_VALUE,
+              0
+              );
+            if (ret < 0) {
+                fprintf(stderr, "Error while parsing\n");
+                return false;
+            }
+            av_data      += ret;
+            av_data_size -= ret;
+
+            if (av_packet->size) {
+                return DecodeVideoFrame(av_context, av_frame, av_packet, video_frame);
+            }
+        }
+    }
+
+    // flush the decoder
+    DecodeVideoFrame(av_context, av_frame, NULL, video_frame);
+
+    fclose(av_file);
+
+    av_parser_close(av_parser);
+    avcodec_free_context(&av_context);
+    av_frame_free(&av_frame);
+    av_packet_free(&av_packet);
+
+    return false;
+}
+
 static char buffer[256];
 const char* timecode_from(float t) {
 
@@ -599,14 +762,19 @@ void MainGui()
   }
   VideoFrame &video_frame = appState.frames[frame];
   if (video_frame.texture == 0) {
-    char path[256];
-    snprintf(path, sizeof(path), "/tmp/foo.%d.png", frame);
-    if (!LoadTexture(path, &video_frame.texture, &video_frame.size)) {
-      fprintf(stderr, "Failed to load: %s\n", path);
-      video_frame.texture = 0;
-      appState.loop_end = frame-1;
-    }else{
+    // char path[256];
+    // snprintf(path, sizeof(path), "/tmp/foo.%d.png", frame);
+    // if (!LoadTexture(path, &video_frame.texture, &video_frame.size)) {
+    //   fprintf(stderr, "Failed to load: %s\n", path);
+    //   video_frame.texture = 0;
+    //   appState.loop_end = frame-1;
+    // }else{
+    //   loaded_frames++;
+    // }
+    if (LoadNextVideoFrame(video_frame)) {
       loaded_frames++;
+    }else{
+      appState.loop_end = frame-1;
     }
   }
 
