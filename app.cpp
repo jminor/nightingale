@@ -20,8 +20,12 @@
 #endif
 
 extern "C" {
+#include <libavutil/imgutils.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/timestamp.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
 }
 
 bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size);
@@ -495,161 +499,316 @@ void AppUpdate()
   }
 }
 
-AVCodec *av_codec = NULL;
-AVCodecParserContext *av_parser = NULL;
-AVCodecContext *av_context = NULL;
+AVFormatContext *fmt_ctx = NULL;
+AVCodecContext *video_dec_ctx = NULL, *audio_dec_ctx;
+int width, height;
+enum AVPixelFormat pix_fmt;
+AVStream *video_stream = NULL, *audio_stream = NULL;
+const char *video_dst_filename = NULL;
+const char *audio_dst_filename = NULL;
+int video_stream_idx = -1, audio_stream_idx = -1;
+int video_frame_count = 0;
+int audio_frame_count = 0;
+
+struct SwsContext *sws_ctx;
+uint8_t *video_dst_data[4] = {NULL};
+int      video_dst_linesize[4];
+int video_dst_bufsize;
+
 AVPacket *av_packet = NULL;
 AVFrame *av_frame = NULL;
-#define BUFFER_SIZE 4096
-uint8_t av_buffer[BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
-uint8_t *av_data = NULL;
-size_t   av_data_size = 0;
-FILE *av_file = NULL;
+
+
+void CloseVideo()
+{
+  avcodec_free_context(&video_dec_ctx);
+  avcodec_free_context(&audio_dec_ctx);
+  avformat_close_input(&fmt_ctx);
+  av_packet_free(&av_packet);
+  av_frame_free(&av_frame);
+  av_free(video_dst_data[0]);
+}
+
+
+static int open_codec_context(
+  int *stream_idx,
+  AVCodecContext **dec_ctx, 
+  AVFormatContext *fmt_ctx, 
+  enum AVMediaType type
+  )
+{
+  int ret, stream_index;
+  AVStream *st;
+  const AVCodec *dec = NULL;
+
+  ret = av_find_best_stream(fmt_ctx, type, -1, -1, NULL, 0);
+  if (ret < 0) {
+    fprintf(stderr, "Could not find %s stream in input file\n",
+      av_get_media_type_string(type));
+    return ret;
+  } else {
+    stream_index = ret;
+    st = fmt_ctx->streams[stream_index];
+
+        /* find decoder for the stream */
+    dec = avcodec_find_decoder(st->codecpar->codec_id);
+    if (!dec) {
+      fprintf(stderr, "Failed to find %s codec\n",
+        av_get_media_type_string(type));
+      return AVERROR(EINVAL);
+    }
+
+        /* Allocate a codec context for the decoder */
+    *dec_ctx = avcodec_alloc_context3(dec);
+    if (!*dec_ctx) {
+      fprintf(stderr, "Failed to allocate the %s codec context\n",
+        av_get_media_type_string(type));
+      return AVERROR(ENOMEM);
+    }
+
+        /* Copy codec parameters from input stream to output codec context */
+    if ((ret = avcodec_parameters_to_context(*dec_ctx, st->codecpar)) < 0) {
+      fprintf(stderr, "Failed to copy %s codec parameters to decoder context\n",
+        av_get_media_type_string(type));
+      return ret;
+    }
+
+        /* Init the decoders */
+    if ((ret = avcodec_open2(*dec_ctx, dec, NULL)) < 0) {
+      fprintf(stderr, "Failed to open %s codec\n",
+        av_get_media_type_string(type));
+      return ret;
+    }
+    *stream_idx = stream_index;
+  }
+
+  return 0;
+}
+
+
+static int output_video_frame(AVFrame *frame, VideoFrame &video_frame)
+{
+    // printf("video_frame n:%d coded_n:%d\n",
+    //        video_frame_count++, frame->coded_picture_number);
+
+    // printf("video_dst_data %p %p %p %p\n",
+    //        video_dst_data[0], video_dst_data[1], video_dst_data[2], video_dst_data[3]);
+
+    // printf("video_dst_linesize %d %d %d %d\n",
+    //        video_dst_linesize[0], video_dst_linesize[1], video_dst_linesize[2], video_dst_linesize[3]);
+
+    // printf("frame %d x %d linesize %d %d %d %d pix_fmt:%d %s\n",
+    //        frame->width, frame->height,
+    //        frame->linesize[0], frame->linesize[1], frame->linesize[2], frame->linesize[3],
+    //        frame->format, av_get_pix_fmt_name((AVPixelFormat)frame->format));
+
+    if (sws_ctx) {
+      sws_scale(
+        sws_ctx,
+        frame->data, frame->linesize,
+        0, frame->height,
+        video_dst_data, video_dst_linesize
+        );
+    }else{
+      /* copy decoded frame to destination buffer:
+       * this is required since rawvideo expects non aligned data */
+      av_image_copy(video_dst_data, video_dst_linesize,
+                    (const uint8_t **)(frame->data), frame->linesize,
+                    pix_fmt, frame->width, frame->height);
+    }
+
+    video_frame.size = ImVec2(frame->width, frame->height);
+    MakeTexture(video_dst_data[0], &video_frame.texture, video_frame.size);
+    // MakeTexture(frame->data[0], &video_frame.texture, video_frame.size);
+
+    return 0;
+}
+
+static int output_audio_frame(AVFrame *frame)
+{
+    // size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
+    // printf("audio_frame n:%d nb_samples:%d pts:%s\n",
+    //        audio_frame_count++, frame->nb_samples,
+    //        av_ts2timestr(frame->pts, &audio_dec_ctx->time_base));
+
+    /* Write the raw audio data samples of the first plane. This works
+     * fine for packed formats (e.g. AV_SAMPLE_FMT_S16). However,
+     * most audio decoders output planar audio, which uses a separate
+     * plane of audio samples for each channel (e.g. AV_SAMPLE_FMT_S16P).
+     * In other words, this code will write only the first audio channel
+     * in these cases.
+     * You should use libswresample or libavfilter to convert the frame
+     * to packed data. */
+    // fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
+
+    return 0;
+}
 
 bool OpenVideo(const char *filename)
 {
-    av_packet = av_packet_alloc();
-    if (!av_packet)
-        return false;
+  int ret = 0;
 
-    // set end of buffer to 0 (this ensures that no overreading happens for damaged MPEG streams)
-    memset(av_buffer + BUFFER_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+  /* open input file, and allocate format context */
+  if (avformat_open_input(&fmt_ctx, filename, NULL, NULL) < 0) {
+    fprintf(stderr, "Could not open source file %s\n", filename);
+    CloseVideo();
+    return false;
+  }
 
-    /* find the MPEG-1 video decoder */
-    av_codec = avcodec_find_decoder(AV_CODEC_ID_MPEG1VIDEO);
-    if (!av_codec) {
-        fprintf(stderr, "Codec not found\n");
-        return false;
+  /* retrieve stream information */
+  if (avformat_find_stream_info(fmt_ctx, NULL) < 0) {
+    fprintf(stderr, "Could not find stream information\n");
+    CloseVideo();
+    return false;
+  }
+
+  if (open_codec_context(&video_stream_idx, &video_dec_ctx, fmt_ctx, AVMEDIA_TYPE_VIDEO) >= 0) {
+    video_stream = fmt_ctx->streams[video_stream_idx];
+
+    /* allocate image where the decoded image will be put */
+    width = video_dec_ctx->width;
+    height = video_dec_ctx->height;
+    pix_fmt = AV_PIX_FMT_RGBA; //video_dec_ctx->pix_fmt; // AV_PIX_FMT_RGBA
+    fprintf(stderr, "pixel format: %d = %s\n", pix_fmt, av_get_pix_fmt_name(pix_fmt));
+    ret = av_image_alloc(
+      video_dst_data, 
+      video_dst_linesize,
+      width, 
+      height, 
+      pix_fmt, 
+      1
+      );
+    if (ret < 0) {
+      fprintf(stderr, "Could not allocate raw video buffer\n");
+      CloseVideo();
+      return false;
     }
+    video_dst_bufsize = ret;
 
-    av_parser = av_parser_init(av_codec->id);
-    if (!av_parser) {
-        fprintf(stderr, "parser not found\n");
+    // we're going to need to convert this after decoding...
+    if (pix_fmt != video_dec_ctx->pix_fmt) {
+      sws_ctx = sws_getContext(
+        width, height, video_dec_ctx->pix_fmt,
+        width, height, pix_fmt,
+        SWS_BILINEAR, NULL, NULL, NULL);
+      if (!sws_ctx) {
+        fprintf(stderr,
+                  "Impossible to create scale context for the conversion "
+                  "fmt:%s s:%dx%d -> fmt:%s s:%dx%d\n",
+                  av_get_pix_fmt_name(video_dec_ctx->pix_fmt), width, height,
+                  av_get_pix_fmt_name(pix_fmt), width, height);
+        CloseVideo();
         return false;
+      }
     }
+  }
 
-    av_context = avcodec_alloc_context3(av_codec);
-    if (!av_context) {
-        fprintf(stderr, "Could not allocate video codec context\n");
-        return false;
-    }
+  if (open_codec_context(&audio_stream_idx, &audio_dec_ctx, fmt_ctx, AVMEDIA_TYPE_AUDIO) >= 0) {
+    audio_stream = fmt_ctx->streams[audio_stream_idx];
+  }
 
-    /* For some codecs, such as msmpeg4 and mpeg4, width and height
-       MUST be initialized there because this information is not
-       available in the bitstream. */
+  /* dump input information to stderr */
+  av_dump_format(fmt_ctx, 0, filename, 0);
 
-    /* open it */
-    if (avcodec_open2(av_context, av_codec, NULL) < 0) {
-        fprintf(stderr, "Could not open codec\n");
-        return false;
-    }
+  if (!audio_stream && !video_stream) {
+    fprintf(stderr, "Could not find audio or video stream in the input, aborting\n");
+    CloseVideo();
+    return false;
+  }
 
-    av_file = fopen(filename, "rb");
-    if (!av_file) {
-        fprintf(stderr, "Could not open %s\n", filename);
-        return false;
-    }
+  av_frame = av_frame_alloc();
+  if (!av_frame) {
+    fprintf(stderr, "Could not allocate frame\n");
+    CloseVideo();
+    return false;
+  }
 
-    av_frame = av_frame_alloc();
-    if (!av_frame) {
-        fprintf(stderr, "Could not allocate video frame\n");
-        return false;
-    }
+  av_packet = av_packet_alloc();
+  if (!av_packet) {
+    fprintf(stderr, "Could not allocate packet\n");
+    CloseVideo();
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
-static bool DecodeVideoFrame(
-  AVCodecContext *dec_ctx,
-  AVFrame *frame,
-  AVPacket *pkt,
-  VideoFrame &video_frame
-  )
+static int decode_packet(AVCodecContext *dec, const AVPacket *pkt, VideoFrame &video_frame)
 {
-    int ret;
+  int ret = 0;
 
-    ret = avcodec_send_packet(dec_ctx, pkt);
+  // submit the packet to the decoder
+  ret = avcodec_send_packet(dec, pkt);
+  if (ret < 0) {
+    fprintf(stderr, "Error submitting a packet for decoding (%s)\n", av_err2str(ret));
+    return ret;
+  }
+
+  // get all the available frames from the decoder
+  while (ret >= 0) {
+    ret = avcodec_receive_frame(dec, av_frame);
     if (ret < 0) {
-        fprintf(stderr, "Error sending a packet for decoding\n");
-        return false;
+      // those two return values are special and mean there is no output
+      // frame available, but there were no errors during decoding
+      if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
+        return 0;
+
+      fprintf(stderr, "Error during decoding (%s)\n", av_err2str(ret));
+      return ret;
     }
 
-    while (ret >= 0) {
-        ret = avcodec_receive_frame(dec_ctx, frame);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-            return false;
-        else if (ret < 0) {
-            fprintf(stderr, "Error during decoding\n");
-            return false;
-        }
-
-        fprintf(stderr, "decoded frame %d\n", dec_ctx->frame_number);
-        fflush(stderr);
-
-        // the picture is allocated by the decoder. no need to free it
-        // snprintf(buf, sizeof(buf), "%s-%d", filename, dec_ctx->frame_number);
-        // pgm_save(frame->data[0], frame->linesize[0],
-        //          frame->width, frame->height, buf);
-        video_frame.size = ImVec2(frame->width, frame->height);
-        return MakeTexture(frame->data[0], &video_frame.texture, video_frame.size);
+    // send the frame data
+    if (dec->codec->type == AVMEDIA_TYPE_VIDEO) {
+      ret = output_video_frame(av_frame, video_frame);
+    }else{
+      ret = output_audio_frame(av_frame);
     }
-    return false;
+
+    av_frame_unref(av_frame);
+    if (ret < 0) {
+      return ret;
+    }
+  }
+
+  return 0;
 }
 
 bool LoadNextVideoFrame(VideoFrame &video_frame)
 {
-    if (av_codec == NULL) {
-      if (!OpenVideo("/Users/jminor/Movies/zeroing.mp4")) {
-        return false;
+  int ret = 0;
+
+  if (fmt_ctx == NULL) {
+    if (!OpenVideo("/Users/jminor/Movies/quite-zeo-x-s.mp4")) {
+      return false;
+    }
+  }
+
+  while (av_read_frame(fmt_ctx, av_packet) >= 0) {
+        // check if the packet belongs to a stream we are interested in, otherwise
+        // skip it
+    if (av_packet->stream_index == video_stream_idx) {
+      ret = decode_packet(video_dec_ctx, av_packet, video_frame);
+      if (ret == 0) {
+        // we got one frame, return now
+        av_packet_unref(av_packet);
+        return true;
       }
     }
-
-    while (!feof(av_file)) {
-        // read raw data from the input file
-        if (av_data_size == 0) {
-          av_data_size = fread(av_buffer, 1, BUFFER_SIZE, av_file);
-          if (!av_data_size)
-              break;
-          av_data = av_buffer;
-        }
-
-        /* use the parser to split the data into frames */
-        while (av_data_size > 0) {
-            int ret = av_parser_parse2(
-              av_parser,
-              av_context,
-              &av_packet->data,
-              &av_packet->size,
-              av_data,
-              av_data_size,
-              AV_NOPTS_VALUE,
-              AV_NOPTS_VALUE,
-              0
-              );
-            if (ret < 0) {
-                fprintf(stderr, "Error while parsing\n");
-                return false;
-            }
-            av_data      += ret;
-            av_data_size -= ret;
-
-            if (av_packet->size) {
-                return DecodeVideoFrame(av_context, av_frame, av_packet, video_frame);
-            }
-        }
+    else if (av_packet->stream_index == audio_stream_idx) {
+      // ret = decode_packet(audio_dec_ctx, av_packet);
     }
+    av_packet_unref(av_packet);
+    if (ret < 0)
+      break;
+  }
 
-    // flush the decoder
-    DecodeVideoFrame(av_context, av_frame, NULL, video_frame);
+    // flush the decoders
+  // if (video_dec_ctx)
+  //   decode_packet(video_dec_ctx, NULL);
+  // if (audio_dec_ctx)
+  //   decode_packet(audio_dec_ctx, NULL);
 
-    fclose(av_file);
-
-    av_parser_close(av_parser);
-    avcodec_free_context(&av_context);
-    av_frame_free(&av_frame);
-    av_packet_free(&av_packet);
-
-    return false;
+  return false;
 }
 
 static char buffer[256];
@@ -762,15 +921,7 @@ void MainGui()
   }
   VideoFrame &video_frame = appState.frames[frame];
   if (video_frame.texture == 0) {
-    // char path[256];
-    // snprintf(path, sizeof(path), "/tmp/foo.%d.png", frame);
-    // if (!LoadTexture(path, &video_frame.texture, &video_frame.size)) {
-    //   fprintf(stderr, "Failed to load: %s\n", path);
-    //   video_frame.texture = 0;
-    //   appState.loop_end = frame-1;
-    // }else{
-    //   loaded_frames++;
-    // }
+    // fprintf(stderr, "Loading frame %d\n", loaded_frames);
     if (LoadNextVideoFrame(video_frame)) {
       loaded_frames++;
     }else{
@@ -795,7 +946,7 @@ void MainGui()
   last_frame_time = now;
 
   if (video_frame.texture) {
-    DrawImage(video_frame.texture, video_frame.size);
+    DrawImage(video_frame.texture, video_frame.size / 2);
   }
   ImGui::Text("Frame %d of %d @ %.1f wait %0.3f dur %0.3f", frame, loaded_frames, io.Framerate, waiting_time, duration_of_last_frame);
 
