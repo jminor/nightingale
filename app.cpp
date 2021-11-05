@@ -45,6 +45,9 @@ void NextTrack();
 void PrevTrack();
 void Seek(float time);
 
+bool OpenVideo(const char *filename);
+void CloseVideo();
+
 #include "app.h"
 
 AppState appState;
@@ -244,7 +247,7 @@ void LoadAudio(const char* path)
   }
 }
 
-void MainInit()
+void MainInit(int argc, char**argv)
 {
   Style_Mono();
 
@@ -254,6 +257,11 @@ void MainInit()
   if (err) {
     Message("AUDIO FAIL: %s", appState.audio.getErrorString(err));
     return;
+  }
+
+  if (argc > 1) {
+    LoadAudio(argv[1]);
+    OpenVideo(argv[1]);
   }
 
   // QueueFolder("/Users/jminor/git/nightingale/audio");
@@ -527,6 +535,8 @@ void CloseVideo()
   av_packet_free(&av_packet);
   av_frame_free(&av_frame);
   av_free(video_dst_data[0]);
+  sws_freeContext(sws_ctx);
+  sws_ctx = NULL;
 }
 
 
@@ -778,7 +788,7 @@ bool LoadNextVideoFrame(VideoFrame &video_frame)
   int ret = 0;
 
   if (fmt_ctx == NULL) {
-    if (!OpenVideo("/Users/jminor/Movies/quite-zeo-x-s.mp4")) {
+    if (!OpenVideo(appState.file_path)) {
       return false;
     }
   }
@@ -1078,11 +1088,14 @@ void DrawButtons(ImVec2 button_size)
   const char* chosenPath = dlg.chooseFileDialog(
     browseButtonPressed,
     dlg.getLastDirectory(),
-    ".mp3;.wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
+    NULL,
+    // ".mp3;.wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
     "Load Audio File"
   );
   if (strlen(chosenPath)>0) {
     LoadAudio(chosenPath);
+    CloseVideo();
+    OpenVideo(chosenPath);
     QueueFolder(dlg.getLastDirectory());
   }
   ImGui::SameLine();
