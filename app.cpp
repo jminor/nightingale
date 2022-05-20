@@ -48,7 +48,7 @@ void Log(const char* format, ...)
   va_list args;
   va_start(args, format);
   fprintf(stderr, "LOG: ");
-  fprintf(stderr, format, args);
+  vfprintf(stderr, format, args);
   fprintf(stderr, "\n");
   va_end(args);
 }
