@@ -234,7 +234,7 @@ void LoadAudio(const char* path)
   }
 }
 
-void MainInit()
+void MainInit(int argc, char* argv[])
 {
   Style_Mono();
 
@@ -244,6 +244,11 @@ void MainInit()
   if (err) {
     Message("AUDIO FAIL: %s", appState.audio.getErrorString(err));
     return;
+  }
+
+  if (argc > 1) {
+    QueueFolder(argv[1]);
+    NextTrack();
   }
 
   // QueueFolder("/Users/jminor/git/nightingale/audio");
