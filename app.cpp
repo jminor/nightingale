@@ -19,6 +19,15 @@
 #include <SDL.h>
 #endif
 
+#define LUA_IMPL
+#include "minilua.h"
+
+lua_State *L = NULL;
+int LuaStart();
+int LuaRun(const char* format, ...);
+void LuaBind(const char* name, int (*fn)(lua_State*));
+void LuaEnd();
+
 bool LoadTexture(const char *path, ImTextureID *tex_id, ImVec2 *size);
 void DestroyTexture(ImTextureID *tex_id);
 
@@ -234,9 +243,21 @@ void LoadAudio(const char* path)
   }
 }
 
+static int _Seek(lua_State* l)
+{
+  float s = lua_tonumber(l, 1);
+  Log("_Seek %f", s);
+  Seek(s);
+  return 0;
+}
+
 void MainInit(int argc, char* argv[])
 {
   Style_Mono();
+
+  LuaStart();
+  LuaRun("print(%d)", 6*9);
+  LuaBind("Seek", _Seek);
 
   LoadFonts();
 
@@ -257,6 +278,7 @@ void MainInit(int argc, char* argv[])
 
 void MainCleanup()
 {
+  LuaEnd();
   appState.audio.stopAll();
   appState.audio.deinit();
 }
@@ -822,7 +844,8 @@ void DrawAudioPanel()
 
   float duration = LengthInSeconds();
   if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
-    Seek(appState.playhead);
+    LuaRun("Seek(%g)", appState.playhead);
+    // Seek(appState.playhead);
   }
 
   float width = ImGui::CalcItemWidth();
@@ -924,3 +947,49 @@ void DrawAudioPanel()
   // }
   ImGui::Text("%s", appState.message);
 }
+
+
+int LuaStart()
+ {
+  L = luaL_newstate();
+  if(L == NULL) {
+    Log("Lua initialization failed.");
+    return -1;
+  }
+  luaL_openlibs(L);
+  return 0;
+}
+
+void LuaBind(const char* name, int (*fn)(lua_State*))
+{
+  lua_register(L, name, fn);
+}
+
+int LuaRun(const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+
+  static char program[1024];
+  int len = vsnprintf(program, sizeof(program), format, args);
+
+  va_end(args);
+
+  if (len > sizeof(program)) {
+    Log("ERROR: Program exceeded max size (%d)", sizeof(program));
+    return -1;
+  }
+
+  printf("LUA RUN: %s\n", program);
+  luaL_loadstring(L, program);
+  lua_call(L, 0, 0);
+  
+  return 0;
+}
+
+void LuaEnd()
+{
+  lua_close(L);
+}
+
+
