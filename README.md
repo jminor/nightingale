@@ -1,4 +1,4 @@
-# Nightingale - audio player
+# Nightingale - media player
 
 ![screenshot](screenshot.png)
 
