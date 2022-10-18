@@ -6,8 +6,16 @@
 
 ## Building
 
+If you prefer `make`
 	% make
 	% ./nightingale
+
+If you prefer `cmake`
+  % mkdir build
+  % cd build
+  % cmake ..
+  % cmake --build .
+  % ./nightingale
 
 See `.github/workflows/build.yaml` for more details.
 
