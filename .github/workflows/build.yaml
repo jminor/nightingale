@@ -127,7 +127,11 @@ jobs:
         brew install glfw3
 
     - name: Build
-      run: make
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        cmake --build .
 
     - name: Check Product
       run: |
