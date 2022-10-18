@@ -135,11 +135,13 @@ jobs:
 
     - name: Check Product
       run: |
+        cd build
         ls -l nightingale
         file nightingale
 
     - name: Package Product
       run: |
+        cd build
         chmod +x nightingale
         zip -r nightingale-mac.zip nightingale fonts
 
@@ -147,7 +149,7 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: nightingale-mac.zip
-        path: nightingale-mac.zip
+        path: build/nightingale-mac.zip
 
     # - run: |
     #     pwd
