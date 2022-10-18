@@ -28,10 +28,7 @@ target_link_directories(nightingale
 target_link_libraries(nightingale
   IMGUI
   glfw
-  ${AUDIOTOOLBOX_LIBRARY}
-  ${COREAUDIO_LIBRARY}
-  ${COREFOUNDATION_LIBRARY}
-  )
+)
 
 file(COPY fonts/ShareTechMono-Regular.ttf DESTINATION fonts)
 file(COPY fonts/fontawesome-webfont.ttf DESTINATION fonts)
@@ -41,12 +38,9 @@ if (APPLE)
   find_library(COREAUDIO_LIBRARY CoreAudio)
   find_library(COREFOUNDATION_LIBRARY CoreFoundation)
   target_link_libraries(nightingale
-    IMGUI
-    glfw
     ${AUDIOTOOLBOX_LIBRARY}
     ${COREAUDIO_LIBRARY}
     ${COREFOUNDATION_LIBRARY}
   )
 endif (APPLE)
-
 
