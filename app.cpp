@@ -5,16 +5,16 @@
 #include <math.h>
 
 #include "audio.h"
-#include "imguihelper.h"
-#include "imgui_plot.h"
-#include "imguifilesystem.h"
+// #include "imguihelper.h"
+// #include "imgui_plot.h"
+// #include "imguifilesystem.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-#ifdef HELLOIMGUI_USE_SDL_OPENGL3
-#include <SDL.h>
-#endif
+// #ifdef HELLOIMGUI_USE_SDL_OPENGL3
+// #include <SDL.h>
+// #endif
 
 void DrawAudioPanel();
 void DrawButtons(ImVec2 button_size);
@@ -144,34 +144,34 @@ void QueueFolder(const char* folder)
 
 void NextTrack()
 {
-  ImGuiFs::PathStringVector files;
-  ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
-  if (files.size() == 0) {
-    return;
-  }
-  for(int i=0; i<files.size()-1; i++) {
-    if (!strcmp(files[i], appState.file_path)) {
-      LoadAudio(files[i+1]);
-      return;
-    }
-  }
-  LoadAudio(files.front());
+  // ImGuiFs::PathStringVector files;
+  // ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
+  // if (files.size() == 0) {
+  //   return;
+  // }
+  // for(int i=0; i<files.size()-1; i++) {
+  //   if (!strcmp(files[i], appState.file_path)) {
+  //     LoadAudio(files[i+1]);
+  //     return;
+  //   }
+  // }
+  // LoadAudio(files.front());
 }
 
 void PrevTrack()
 {
-  ImGuiFs::PathStringVector files;
-  ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
-  if (files.size() == 0) {
-    return;
-  }
-  for(int i=1; i<files.size(); i++) {
-    if (!strcmp(files[i], appState.file_path)) {
-      LoadAudio(files[i-1]);
-      return;
-    }
-  }
-  LoadAudio(files.back());
+  // ImGuiFs::PathStringVector files;
+  // ImGuiFs::DirectoryGetFiles(appState.queue_folder, files);
+  // if (files.size() == 0) {
+  //   return;
+  // }
+  // for(int i=1; i<files.size(); i++) {
+  //   if (!strcmp(files[i], appState.file_path)) {
+  //     LoadAudio(files[i-1]);
+  //     return;
+  //   }
+  // }
+  // LoadAudio(files.back());
 }
 
 void LoadAudio(const char* path)
@@ -442,8 +442,8 @@ void MainGui()
   const char *app_name = "Nightingale";
   const char *window_id = "###MainWindow";
   char window_title[1024];
-  char filename[ImGuiFs::MAX_FILENAME_BYTES] = {""};
-  ImGuiFs::PathGetFileName(appState.file_path, filename);
+  char filename[PATH_MAX] = {""};
+  // ImGuiFs::PathGetFileName(appState.file_path, filename);
   if (strlen(filename)) {
     snprintf(window_title, sizeof(window_title), "%s - %s%s", app_name, filename, window_id);
   }else{
@@ -589,18 +589,18 @@ void DrawButtons(ImVec2 button_size)
   ImGui::SameLine();
 
   const bool browseButtonPressed = IconButton("\uF07C##Load", button_size);                          // we need a trigger boolean variable
-  static ImGuiFs::Dialog dlg;
-  const char* chosenPath = dlg.chooseFileDialog(
-    browseButtonPressed,
-    dlg.getLastDirectory(),
-    // ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
-    ".wav;.mp3;.flac",
-    "Load Audio File (wav, mp3, flac)"
-  );
-  if (strlen(chosenPath)>0) {
-    LoadAudio(chosenPath);
-    QueueFolder(dlg.getLastDirectory());
-  }
+  // static ImGuiFs::Dialog dlg;
+  // const char* chosenPath = dlg.chooseFileDialog(
+  //   browseButtonPressed,
+  //   dlg.getLastDirectory(),
+  //   // ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
+  //   ".wav;.mp3;.flac",
+  //   "Load Audio File (wav, mp3, flac)"
+  // );
+  // if (strlen(chosenPath)>0) {
+  //   LoadAudio(chosenPath);
+  //   QueueFolder(dlg.getLastDirectory());
+  // }
   ImGui::SameLine();
 
   // if (IconButton("\uF074##NodeGraph", button_size)) {
@@ -628,7 +628,7 @@ void DrawAudioPanel()
   // DrawButtons();
 
   if (appState.playing) {
-    ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0); // = 30fps
+    // ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0); // = 30fps
   }
 
   if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
@@ -645,20 +645,20 @@ void DrawAudioPanel()
   float width = ImGui::CalcItemWidth();
 
   if (false) { //appState.source == &appState.wav) {
-    ImGui::PlotConfig plot_config;
-    plot_config.frame_size = ImVec2(width, 100);
-    plot_config.values.ys = GetData() + appState.selection_start;
-    plot_config.values.count = appState.selection_length;
-    plot_config.scale.min = -1.0f;
-    plot_config.scale.max = 1.0f;
-    plot_config.selection.show = false;
-    // plot_config.selection.show = appState.playing;
-    // uint32_t start = 0, length = 256;
-    // plot_config.selection.start = &start;
-    // plot_config.selection.length = &length;
-    ImGui::Plot("Waveform", plot_config);
-    ImGui::SameLine();
-    ImGui::Text("Waveform\nDetail");
+    // ImGui::PlotConfig plot_config;
+    // plot_config.frame_size = ImVec2(width, 100);
+    // plot_config.values.ys = GetData() + appState.selection_start;
+    // plot_config.values.count = appState.selection_length;
+    // plot_config.scale.min = -1.0f;
+    // plot_config.scale.max = 1.0f;
+    // plot_config.selection.show = false;
+    // // plot_config.selection.show = appState.playing;
+    // // uint32_t start = 0, length = 256;
+    // // plot_config.selection.start = &start;
+    // // plot_config.selection.length = &length;
+    // ImGui::Plot("Waveform", plot_config);
+    // ImGui::SameLine();
+    // ImGui::Text("Waveform\nDetail");
   }else{
     // this shows the mixed output waveform
     ImGui::PlotLines(
@@ -683,21 +683,21 @@ void DrawAudioPanel()
   //   ImVec2(width,100) // graph_size
   //   );
 
-  ImGui::PlotConfig plot_config;
-  plot_config.frame_size = ImVec2(width, 100);
-  plot_config.values.ys = GetData();
-  plot_config.values.count = DataLen();
-  plot_config.scale.min = -1.0f;
-  plot_config.scale.max = 1.0f;
-  plot_config.selection.show = true;
-  plot_config.selection.start = &appState.selection_start;
-  plot_config.selection.length = &appState.selection_length;
-  // plot_config.overlay_text = "Hello";
-  if (ImGui::Plot("Data", plot_config) == ImGui::PlotStatus::selection_updated) {
-    Seek(appState.selection_start * LengthInSeconds() / DataLen());
-    appState.playing = false;
-    appState.selection_length = fmax(appState.selection_length, 256);
-  }
+  // ImGui::PlotConfig plot_config;
+  // plot_config.frame_size = ImVec2(width, 100);
+  // plot_config.values.ys = GetData();
+  // plot_config.values.count = DataLen();
+  // plot_config.scale.min = -1.0f;
+  // plot_config.scale.max = 1.0f;
+  // plot_config.selection.show = true;
+  // plot_config.selection.start = &appState.selection_start;
+  // plot_config.selection.length = &appState.selection_length;
+  // // plot_config.overlay_text = "Hello";
+  // if (ImGui::Plot("Data", plot_config) == ImGui::PlotStatus::selection_updated) {
+  //   Seek(appState.selection_start * LengthInSeconds() / DataLen());
+  //   appState.playing = false;
+  //   appState.selection_length = fmax(appState.selection_length, 256);
+  // }
 
   ImVec2 size = ImGui::GetItemRectSize();
   ImVec2 corner = ImGui::GetItemRectMax();

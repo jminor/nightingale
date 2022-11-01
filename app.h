@@ -4,16 +4,16 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "imguihelper.h"
-#include "imgui_plot.h"
-#include "imguifilesystem.h"
+// #include "imguihelper.h"
+// #include "imgui_plot.h"
+// #include "imguifilesystem.h"
 #include "imgui_internal.h"
 
 // Struct that holds the application's state
 struct AppState
 {
-  char file_path[ImGuiFs::MAX_PATH_BYTES];
-  char queue_folder[ImGuiFs::MAX_PATH_BYTES];
+  char file_path[PATH_MAX];
+  char queue_folder[PATH_MAX];
 
   bool playing = false;
   float volume = 1.0f;

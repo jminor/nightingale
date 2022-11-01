@@ -124,7 +124,7 @@ int main(int, char**)
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
-    io.ConfigFlags |= ImGuiConfigFlags_EnablePowerSavingMode;
+    // io.ConfigFlags |= ImGuiConfigFlags_EnablePowerSavingMode;
     io.ConfigViewportsNoAutoMerge = true;
     //io.ConfigViewportsNoTaskBarIcon = true;
 
@@ -173,7 +173,7 @@ int main(int, char**)
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        ImGui_ImplGlfw_WaitForEvent();
+        // ImGui_ImplGlfw_WaitForEvent();
         glfwPollEvents();
 
         // Start the Dear ImGui frame
