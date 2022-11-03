@@ -6,8 +6,6 @@ project(nightingale VERSION 1.0)
 add_executable(nightingale)
 set_property(TARGET nightingale PROPERTY CXX_STANDARD 14)
 
-# add_subdirectory("imgui")
-
 # find_package(glfw3)
 include(glfw.cmake)
 
@@ -23,9 +21,11 @@ target_sources(nightingale
     app.h
     audio.h
     miniaudio.h
-    
-    ${gl3w_BINARY_DIR}/src/gl3w.c
-)
+    embedded_font_ShareTechMono.inc
+    embedded_font_fontawesome.inc
+
+  PRIVATE
+    libs/gl3w/GL/gl3w.c)
 
 # add_subdirectory("libs")
 # include_directories(
@@ -34,31 +34,16 @@ target_sources(nightingale
 set_target_properties(nightingale PROPERTIES COMPILE_FLAGS "-DIMGUI_IMPL_OPENGL_LOADER_GL3W")
 
 find_package(OpenGL REQUIRED)
-#target_link_libraries(imgui PUBLIC ${OPENGL_LIBRARIES})
 
-#find_package(gl3w REQUIRED)
-#include_directories(
-#  ${gl3w_SOURCE_DIR}/include
-#)
-
-#find_package(GLEW REQUIRED)
-#target_include_directories(nightingale PUBLIC ${GLEW_INCLUDE_DIRS})
-#link_libraries(${GLEW_LIBRARIES})
-#include_directories(
-#    libs/gl3w
-#)
 include_directories(
-  ${gl3w_HEADER_DIR}
-)
+    libs/gl3w)
 
 target_compile_definitions(nightingale 
     PRIVATE BUILT_RESOURCE_PATH=${PROJECT_SOURCE_DIR})
 
 target_link_libraries(nightingale
     imgui
-    glfw
-    gl3w
-)
+    glfw)
 
 if (APPLE)
   find_library(COREFOUNDATION_LIBRARY CoreFoundation)
@@ -69,10 +54,22 @@ if (APPLE)
   target_link_libraries(nightingale ${OPENGL_LIBRARY})
 endif (APPLE)
 
-install(FILES
-    "nightingale_rsrc/ShareTechMono-Regular.ttf"
-    "nightingale_rsrc/fontawesome-webfont.ttf"
-    DESTINATION bin/nightingale_rsrc)
+#set_source_files_properties(embedded_font_ShareTechMono.inc PROPERTIES GENERATED 1)
+#set_source_files_properties(embedded_font_fontawesome.inc PROPERTIES GENERATED 1)
+
+add_custom_command(
+    OUTPUT "${PROJECT_SOURCE_DIR}/embedded_font_ShareTechMono.inc"
+    COMMAND binary_to_compressed_c -base85 ${PROJECT_SOURCE_DIR}/fonts/ShareTechMono-Regular.ttf ShareTechMono > ${PROJECT_SOURCE_DIR}/embedded_font_ShareTechMono.inc
+    COMMENT "Embedding font: ShareTechMono-Regular.ttf"
+    MAIN_DEPENDENCY "fonts/ShareTechMono-Regular.ttf"
+    VERBATIM)
+
+add_custom_command(
+    OUTPUT "${PROJECT_SOURCE_DIR}/embedded_font_fontawesome.inc"
+    COMMAND binary_to_compressed_c -base85 ${PROJECT_SOURCE_DIR}/fonts/fontawesome-webfont.ttf fontawesome > ${PROJECT_SOURCE_DIR}/embedded_font_fontawesome.inc
+    COMMENT "Embedding font: fontawesome-webfont.ttf"
+    MAIN_DEPENDENCY "fonts/fontawesome-webfont.ttf"
+    VERBATIM)
 
 install(TARGETS nightingale
     BUNDLE DESTINATION bin

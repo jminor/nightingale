@@ -22,15 +22,5 @@ else()
         set(GLFW_VULKAN_STATIC OFF CACHE INTERNAL "glfw vulkan") # "Assume the Vulkan loader is linked with the application"
         add_subdirectory(${glfw_SOURCE_DIR} ${glfw_BINARY_DIR})
     endif()
-
-    FetchContent_Declare(gl3w
-        GIT_REPOSITORY "https://github.com/skaslev/gl3w"
-        GIT_SHALLOW ON)
-    FetchContent_GetProperties(gl3w)
-    if(NOT gl3w_POPULATED)
-        message(STATUS "Populating gl3w")
-        FetchContent_Populate(gl3w)
-        add_subdirectory(${gl3w_SOURCE_DIR} ${gl3w_BINARY_DIR})
-    endif()
 endif()
 

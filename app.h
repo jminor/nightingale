@@ -24,13 +24,6 @@ struct AppState
 
   char message[1024];
 
-  // SoLoud::Soloud audio;
-  // SoLoud::handle audio_handle;
-
-  // SoLoud::AudioSource *source;
-  // SoLoud::Wav wav;
-  // SoLoud::Modplug mod;
-
   bool show_main_window = true;
   bool mini_mode = false;
   bool show_style_editor = false;
@@ -40,3 +33,9 @@ struct AppState
 extern AppState appState;
 extern ImFont *gTechFont;
 extern ImFont *gIconFont;
+
+void MainInit(int argc, char** argv);
+void MainGui();
+void MainCleanup();
+
+

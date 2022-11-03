@@ -20,7 +20,7 @@ ma_decoder decoder;
 ma_device_config deviceConfig;
 ma_device device;
 
-int play_audio_file(const char* path)
+bool load_audio_file(const char* path)
 {
 	stop_audio();
 	
@@ -29,7 +29,7 @@ int play_audio_file(const char* path)
     result = ma_decoder_init_file(path, NULL, &decoder);
     if (result != MA_SUCCESS) {
         printf("Could not load file: %s\n", path);
-        return -2;
+        return false;
     }
 
     deviceConfig = ma_device_config_init(ma_device_type_playback);
@@ -42,21 +42,31 @@ int play_audio_file(const char* path)
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
         printf("Failed to open playback device.\n");
         ma_decoder_uninit(&decoder);
-        return -3;
+        return false;
     }
+    
+    return true;
+}
 
+bool play_audio()
+{
     if (ma_device_start(&device) != MA_SUCCESS) {
         printf("Failed to start playback device.\n");
         ma_device_uninit(&device);
         ma_decoder_uninit(&decoder);
-        return -4;
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 void stop_audio()
 {
     ma_device_uninit(&device);
     ma_decoder_uninit(&decoder);
+}
+
+int sample_rate()
+{
+    return deviceConfig.sampleRate;
 }

@@ -8,6 +8,8 @@
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
 
+#include "app.h"
+
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 // About Desktop OpenGL function loaders:
@@ -51,11 +53,7 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-void MainInit();
-void MainGui();
-void MainCleanup();
-
-int main(int, char**)
+int main(int argc, char** argv)
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -144,7 +142,7 @@ int main(int, char**)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    MainInit();
+    MainInit(argc, argv);
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.

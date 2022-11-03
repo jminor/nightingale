@@ -5,6 +5,8 @@
 #include <math.h>
 
 #include "audio.h"
+#include "embedded_font_ShareTechMono.inc"
+#include "embedded_font_fontawesome.inc"
 // #include "imguihelper.h"
 // #include "imgui_plot.h"
 // #include "imguifilesystem.h"
@@ -12,13 +14,9 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
-// #ifdef HELLOIMGUI_USE_SDL_OPENGL3
-// #include <SDL.h>
-// #endif
-
 void DrawAudioPanel();
 void DrawButtons(ImVec2 button_size);
-void LoadAudio(const char* path);
+bool LoadAudio(const char* path);
 void Play();
 void Pause();
 void Stop();
@@ -57,16 +55,13 @@ void LoadFonts()
 {
   ImGuiIO& io = ImGui::GetIO();
 
-  // TODO: Use ImGuiFontStudio to bundle these fonts into the executable.
-#ifdef EMSCRIPTEN
-  Log("Skipping font loading on EMSCRIPTEN platform.");
-  gTechFont = io.Fonts->AddFontDefault();
-  gIconFont = gTechFont;
-#else
-  gTechFont = io.Fonts->AddFontFromFileTTF("fonts/ShareTechMono-Regular.ttf", 20.0f);
+//  gTechFont = io.Fonts->AddFontDefault();
+//  gIconFont = gTechFont;
+  gTechFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
+     ShareTechMono_compressed_data_base85, 20.0f);
   static const ImWchar icon_fa_ranges[] = { 0xF000, 0xF18B, 0 };
-  gIconFont = io.Fonts->AddFontFromFileTTF("fonts/fontawesome-webfont.ttf", 16.0f, NULL, icon_fa_ranges);
-#endif
+    gIconFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
+     fontawesome_compressed_data_base85, 16.0f, NULL, icon_fa_ranges);
 }
 
 void Style_Mono()
@@ -174,55 +169,37 @@ void PrevTrack()
   // LoadAudio(files.back());
 }
 
-void LoadAudio(const char* path)
+bool LoadAudio(const char* path)
 {
   Stop();
 
-  // appState.source = NULL;
-  // appState.audio_handle = 0;
-
   strncpy(appState.file_path, path, sizeof(appState.file_path));
 
-  // SoLoud::result err;
-  // if (!strncmp(".wav", path+strlen(path)-4, 4)) {
-  //   err = appState.wav.load(path);
-  //   if (!err) {
-  //     appState.source = &appState.wav;
-  //   }
-  // }else{
-  //   err = appState.mod.load(path);
-  //   if (!err) {
-  //     appState.source = &appState.mod;
-  //   }
-  // }
+  bool success = load_audio_file(appState.file_path);
 
-  int err = play_audio_file(appState.file_path);
-
-  if (err) {
+  if (!success) {
     Message("Failed to load: %s", path);
+    return false;
   }else{
     Message("Loaded: %s", path);
-    // Play();
+    return true;
   }
 }
 
-void MainInit()
+void MainInit(int argc, char** argv)
 {
   Style_Mono();
 
   LoadFonts();
-
-  // SoLoud::result err = appState.audio.init();
-  // if (err) {
-  //   Message("Failed to load initialize audio: %s", appState.audio.getErrorString(err));
-  // }
-  // LoadAudio(""); ///Users/jminor/Library/Mobile Documents/com~apple~CloudDocs/Sokpop Sources/sokpop-source 5/nosoksky.gmx/sound/audio/sou_radio_fragment5.wav");
-  // appState.audio.setVisualizationEnable(true);
+  
+  if (argc > 1) {
+    LoadAudio(argv[1]);
+    Play();
+  }
 }
 
 void MainCleanup()
 {
-  // appState.audio.deinit();
   stop_audio();
 }
 
@@ -245,7 +222,7 @@ unsigned int DataLen()
   // }else if (appState.source == &appState.mod) {
   //   return appState.mod.mDataLen / sizeof(float);
   // }
-  return 0;
+  return sizeof(dummy_buffer);
 }
 
 float LengthInSeconds()
@@ -255,7 +232,7 @@ float LengthInSeconds()
   // }else if (appState.source == &appState.mod) {
   //   return appState.mod.getLength();
   // }
-  return 0;
+  return DataLen() / sample_rate();
 }
 
 void Play()

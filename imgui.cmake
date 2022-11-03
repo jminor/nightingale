@@ -75,21 +75,10 @@ else()
         ${glfw_SOURCE_DIR}/include
     )
 
-#    find_package(OpenGL REQUIRED)
-#    target_link_libraries(imgui PUBLIC ${OPENGL_LIBRARIES})
+    add_executable(binary_to_compressed_c
+        ${IMGUI_DIR}/misc/fonts/binary_to_compressed_c.cpp
+    )
+    set_property(TARGET binary_to_compressed_c PROPERTY CXX_STANDARD 14)
 
-#    set(IMGUI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/imgui)
-
-#    FetchContent_GetProperties(imgui)
-#    if(NOT imgui_POPULATED)
-#        FetchContent_Populate(imgui)
-#        set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "shared")
-#        set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "imgui examples")
-#        set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "imgui tests")
-#        set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "imgui docs")
-#        set(GLFW_INSTALL ON CACHE INTERNAL "imgui install")
-#        set(GLFW_VULKAN_STATIC OFF CACHE INTERNAL "imgui vulkan") # "Assume the Vulkan loader is linked with the application"
-#        add_subdirectory(${imgui_SOURCE_DIR} ${imgui_BINARY_DIR})
-#    endif()
 endif()
 
