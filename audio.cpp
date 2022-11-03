@@ -16,6 +16,8 @@ ma_decoder decoder;
 int recent_data_index = 0;
 float recent_data[256];
 
+static uint64_t __num_samples = 0;
+
 bool setup_audio()
 {
     if (ma_context_init(NULL, 0, NULL, &context) != MA_SUCCESS) {
@@ -90,7 +92,9 @@ bool load_audio_file(const char* path)
         ma_decoder_uninit(&decoder);
         return false;
     }
-    
+
+    __num_samples = ma_decoder_get_length_in_pcm_frames(&decoder);
+
     return true;
 }
 
@@ -123,7 +127,7 @@ uint32_t sample_rate()
 
 uint64_t num_samples()
 {
-    return ma_decoder_get_length_in_pcm_frames(&decoder);
+    return __num_samples;
 }
 
 uint64_t current_sample_position()
