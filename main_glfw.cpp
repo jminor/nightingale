@@ -162,7 +162,8 @@ int main(int argc, char** argv)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
-    while (!glfwWindowShouldClose(window))
+    bool keepGoing = true;
+    while (keepGoing && !glfwWindowShouldClose(window))
     {
         glfwHideWindow(window); // hide the native main window
 
@@ -179,7 +180,8 @@ int main(int argc, char** argv)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        MainGui();
+        keepGoing = MainGui();
+        if (!keepGoing) break;
 
         // Rendering
         ImGui::Render();

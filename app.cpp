@@ -194,6 +194,8 @@ void MainInit(int argc, char** argv)
 
     LoadFonts();
 
+    setup_audio();
+
     if (argc > 1) {
         LoadAudio(argv[1]);
         Play();
@@ -202,70 +204,53 @@ void MainInit(int argc, char** argv)
 
 void MainCleanup()
 {
-    stop_audio();
+    Stop();
+    tear_down_audio();
 }
 
 static float dummy_buffer[256];
 
 float* GetData()
 {
-    // if (appState.source == &appState.wav) {
-    //   return appState.wav.mData;
-    // }else if (appState.source == &appState.mod) {
-    //   return (float*)appState.mod.mData;
-    // }
+    // TODO: num channels?
+    memcpy(dummy_buffer, recent_data, sizeof(dummy_buffer));
     return dummy_buffer;
 }
 
 unsigned int DataLen()
 {
-    // if (appState.source == &appState.wav) {
-    //   return appState.wav.mSampleCount;
-    // }else if (appState.source == &appState.mod) {
-    //   return appState.mod.mDataLen / sizeof(float);
-    // }
+    // TODO: num channels?
     return sizeof(dummy_buffer);
 }
 
 float LengthInSeconds()
 {
-    // if (appState.source == &appState.wav) {
-    //   return appState.wav.getLength();
-    // }else if (appState.source == &appState.mod) {
-    //   return appState.mod.getLength();
-    // }
-    return DataLen() / sample_rate();
+    // TODO: num channels?
+    return (double)num_samples() / (double)sample_rate();
 }
 
 void Play()
 {
-    // if (!appState.source) {
-    //   // do nothing
-    // }else if (appState.audio_handle) {
-    //   appState.audio.setPause(appState.audio_handle, false);
-    // }else{
-    //   appState.audio_handle = appState.audio.play(*appState.source, appState.volume);
-    //   appState.audio.setLooping(appState.audio_handle, appState.loop);
-    // }
+    play_audio();
     appState.playing = true;
 }
 
 void Pause()
 {
-    // if (appState.source && appState.audio_handle) {
-    //   appState.audio.setPause(appState.audio_handle, true);
-    // }
+    if (appState.playing) stop_audio();
     appState.playing = false;
 }
 
 void Stop()
 {
-    // appState.audio.stopAll();
+    if (appState.playing) stop_audio();
     appState.playing = false;
 }
 
 void Seek(float time)
 {
+    int targetFrame = time * sample_rate();
+    seek_audio(targetFrame);
     appState.playhead = time;
     // if (appState.audio_handle) {
     //   appState.audio.setPause(appState.audio_handle, true);
@@ -369,6 +354,8 @@ void AppUpdate()
     // bool was_playing = appState.playing;
     // appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
 
+    appState.playhead = (double)current_sample_position() / (double)sample_rate();
+
     // if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
     //   appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
     //   appState.playhead = fmodf(appState.playhead, LengthInSeconds());
@@ -388,7 +375,7 @@ void AppUpdate()
     // }
 }
 
-void MainGui()
+bool MainGui()
 {
     AppUpdate();
 
@@ -425,14 +412,14 @@ void MainGui()
                  0);
 
     if (!appState.show_main_window) {
-        exit(0);
+        return false;
     }
 
     ImVec2 button_size = ImVec2(ImGui::GetTextLineHeightWithSpacing(),
                                 ImGui::GetTextLineHeightWithSpacing());
 
     if (IconButton("\uF00D", button_size)) {
-        exit(0);
+        return false;
     }
     ImGui::SameLine();
     if (IconButton(appState.mini_mode ? "\uF077" : "\uF078", button_size)) {
@@ -497,6 +484,8 @@ void MainGui()
     if (appState.show_demo_window) {
         ImGui::ShowDemoWindow();
     }
+
+    return true;
 }
 
 

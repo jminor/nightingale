@@ -35,7 +35,7 @@ extern ImFont *gTechFont;
 extern ImFont *gIconFont;
 
 void MainInit(int argc, char** argv);
-void MainGui();
+bool MainGui();
 void MainCleanup();
 
 
