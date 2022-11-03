@@ -22,9 +22,9 @@ ma_device device;
 
 bool load_audio_file(const char* path)
 {
-	stop_audio();
-	
-	ma_result result;
+    stop_audio();
+
+    ma_result result;
 
     result = ma_decoder_init_file(path, NULL, &decoder);
     if (result != MA_SUCCESS) {
