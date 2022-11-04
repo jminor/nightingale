@@ -208,24 +208,21 @@ void MainCleanup()
     tear_down_audio();
 }
 
-static float dummy_buffer[256];
-
 float* GetData()
 {
     // TODO: num channels?
-    memcpy(dummy_buffer, recent_data, sizeof(dummy_buffer));
-    return dummy_buffer;
+    return recent_data;
 }
 
 unsigned int DataLen()
 {
     // TODO: num channels?
-    return sizeof(dummy_buffer);
+    return sizeof(recent_data) / sizeof(float);
 }
 
 int GetChannels()
 {
-  return 2;
+  return num_channels();
 }
 
 float LengthInSeconds()
@@ -631,12 +628,13 @@ void DrawAudioPanel()
         ImGui::PlotLines(
                          "Live Waveform",
                          GetData(), //appState.audio.getWave(),
-                         256,  // values_count
+                         DataLen() / GetChannels(),  // values_count
                          0,    // values_offset
                          nullptr, // overlay_text
                          -1.0f, // scale_min
                          1.0f, // scale_max
-                         ImVec2(width,100) // graph_size
+                         ImVec2(width,100), // graph_size
+                         sizeof(float) * GetChannels()
                          );
     }
     // ImGui::PlotHistogram(

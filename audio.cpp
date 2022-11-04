@@ -14,7 +14,7 @@ ma_device device;
 ma_decoder decoder;
 
 int recent_data_index = 0;
-float recent_data[256];
+float recent_data[1024];
 
 static uint64_t __num_samples = 0;
 
@@ -65,7 +65,21 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 
     ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount);
 
-    memcpy(recent_data, pOutput, MIN(sizeof(recent_data), frameCount*sizeof(float)));
+    float* source = (float*)pOutput;
+    int frame_size = sizeof(float);
+    int frames_to_copy = frameCount;
+    int frames_copied = 0;
+    int max_frames = sizeof(recent_data)/frame_size;
+
+    while (frames_to_copy > 0) {
+        int frames_free = max_frames - recent_data_index;
+        int chunk_size = MIN(frames_free, frames_to_copy);
+        memcpy(&recent_data[recent_data_index], &source[frames_copied], chunk_size * frame_size);
+        frames_to_copy -= chunk_size;
+        recent_data_index += chunk_size;
+        frames_copied += chunk_size;
+        if (recent_data_index >= max_frames) recent_data_index = 0;
+    }
 
     (void)pInput;
 }
@@ -123,6 +137,12 @@ bool stop_audio()
 uint32_t sample_rate()
 {
     return deviceConfig.sampleRate;
+//    return decoder.outputSampleRate;
+}
+
+int num_channels()
+{
+    return decoder.outputChannels;
 }
 
 uint64_t num_samples()
