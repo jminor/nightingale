@@ -227,7 +227,7 @@ int GetChannels()
 
 float LengthInSeconds()
 {
-    // TODO: num channels?
+    if (num_samples() == 0) return 0;
     return (double)num_samples() / (double)sample_rate();
 }
 
@@ -444,9 +444,17 @@ bool MainGui()
     if (IconButton(appState.mini_mode ? "\uF077" : "\uF078", button_size)) {
         appState.mini_mode = !appState.mini_mode;
     }
+
     ImGui::SameLine();
-    *(strchr(window_title, '#'))='\0';
-    ImGui::Text("%s", window_title);
+    ImGui::TextUnformatted(strlen(filename) ? filename : app_name);
+
+    if (LengthInSeconds() > 0) {
+        ImGui::SameLine();
+        ImGui::Text("/ %s", timecode_from(appState.playhead));
+
+        ImGui::SameLine();
+        ImGui::Text("/ %s", timecode_from(LengthInSeconds()));
+    }
 
     ImGui::SameLine();
     DrawButtons(button_size);
@@ -600,7 +608,7 @@ void DrawAudioPanel()
     }
 
     float duration = LengthInSeconds();
-    if (ImGui::SliderFloat("Playhead", &appState.playhead, 0.0f, duration)) {
+    if (ImGui::SliderFloat("Playhead", &appState.playhead, 0.0f, duration+1)) {
         Seek(appState.playhead);
         // appState.playing = false;
     }
