@@ -223,6 +223,11 @@ unsigned int DataLen()
     return sizeof(dummy_buffer);
 }
 
+int GetChannels()
+{
+  return 2;
+}
+
 float LengthInSeconds()
 {
     // TODO: num channels?
@@ -373,6 +378,23 @@ void AppUpdate()
     // if (appState.playing) {
     //   appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
     // }
+}
+
+static char buffer[256];
+const char* timecode_from(float t) {
+
+  // float fraction = t - floor(t);
+  t = floor(t);
+  int seconds = fmodf(t, 60.0);
+  int minutes = fmodf(t/60.0, 60.0);
+  int hours = floor(t/3600.0);
+
+  snprintf(
+    buffer, sizeof(buffer),
+    "%d:%02d:%02d",
+    hours, minutes, seconds); //, (int)(fraction*100.0));
+
+  return buffer;
 }
 
 bool MainGui()
