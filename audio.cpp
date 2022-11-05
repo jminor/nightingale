@@ -14,7 +14,7 @@ ma_device device;
 ma_decoder decoder;
 
 int recent_data_index = 0;
-float recent_data[1024];
+float recent_data[1024*2];
 
 static uint64_t __num_samples = 0;
 

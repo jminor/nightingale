@@ -27,6 +27,11 @@ void NextTrack();
 void PrevTrack();
 void Seek(float time);
 
+static int min(int a, int b) {
+    if (a < b) return a;
+    return b;
+}
+
 #include "app.h"
 
 AppState appState;
@@ -620,15 +625,32 @@ void ComputeAndDrawVolumeMeter(ImVec2 size)
 
 void DrawAudioPanel()
 {
-     ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiStyle& style = ImGui::GetStyle();
     ImGuiIO& io = ImGui::GetIO();
 
-//  ImGui::BeginGroup();
+  ImGui::BeginGroup();
 
-  float duration = LengthInSeconds();
-  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
-    Seek(appState.playhead);
-  }
+    ImGui::BeginGroup();
+    float duration = LengthInSeconds();
+    if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration, timecode_from(appState.playhead))) {
+        Seek(appState.playhead);
+    }
+
+    ImGui::BeginGroup();
+    ImGui::Text("RATE: %d", sample_rate());
+    ImGui::Text("CHAN: %d", num_channels());
+    ImGui::Text("SAMP: %llu", num_samples());
+    ImGui::EndGroup();
+
+    ImGui::SameLine();
+
+    ImGui::BeginGroup();
+    ImGui::Text("/ BYTES: -");
+    ImGui::Text("/ TYPE: F32");
+    ImGui::Text("/ DUR: %fs", LengthInSeconds());
+    ImGui::EndGroup();
+
+    ImGui::EndGroup();
 
   float width = ImGui::CalcItemWidth();
 
@@ -654,36 +676,18 @@ void DrawAudioPanel()
       corner -= ImGui::GetWindowPos();
     }
 
-    ImGui::SameLine(0,style.ItemInnerSpacing.x);
-    ImGui::Text("DAT");
-  }
+//    ImGui::SameLine(0,style.ItemInnerSpacing.x);
+//    ImGui::Text("DAT");
+    }
 
-  ImGui::SameLine();
+    ImGui::SameLine();
 
-  if (KnobFloat("VOL", &appState.volume, 0.01f, 0.0f, 1.0f, "%.2f")) {
-//    appState.audio.setVolume(appState.audio_handle, appState.volume);
-  }
-
-  // if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f, "%.2f")) {
-  //   appState.audio.setVolume(appState.audio_handle, appState.volume);
-  // }
-
-  if (ImGui::SliderFloat("POS", &appState.playhead, 0.0f, duration)) {
-    Seek(appState.playhead);
-    appState.playing = false;
-  }
+    if (KnobFloat("VOL", &appState.volume, 0.005f, 0.0f, 1.0f, "%.2f")) {
+        //    appState.audio.setVolume(appState.audio_handle, appState.volume);
+    }
 
     if (appState.playing) {
         // ImGui::SetMaxWaitBeforeNextFrame(1.0 / 30.0); // = 30fps
-    }
-
-    if (ImGui::SliderFloat("Volume", &appState.volume, 0.0f, 1.0f)) {
-        // appState.audio.setVolume(appState.audio_handle, appState.volume);
-    }
-
-    if (ImGui::SliderFloat("Playhead", &appState.playhead, 0.0f, duration+1)) {
-        Seek(appState.playhead);
-        // appState.playing = false;
     }
 
     // auto size = ImGui::GetItemRectSize();
@@ -706,9 +710,9 @@ void DrawAudioPanel()
     }else{
         // this shows the mixed output waveform
         ImGui::PlotLines(
-                         "Live Waveform",
+                         "PCM",
                          GetData(), //appState.audio.getWave(),
-                         DataLen() / GetChannels(),  // values_count
+                         min(appState.wav_len, DataLen()) / GetChannels(),  // values_count
                          0,    // values_offset
                          nullptr, // overlay_text
                          -1.0f, // scale_min
@@ -750,11 +754,18 @@ void DrawAudioPanel()
         corner -= ImGui::GetWindowPos();
     }
 
+//    ImGui::Text("Waveform\nFull");
+
     ImGui::SameLine();
-    ImGui::Text("Waveform\nFull");
+    float wav_len = appState.wav_len;
+    if (KnobFloat("ZOOM", &wav_len, 10.0f, 1, DataLen(), "%.0f")) {
+        appState.wav_len = wav_len;
+    }
 
-    // ImGui::PopItemWidth();
+    ImGui::EndGroup();
 
+//    ImGui::PopItemWidth();
+//
     static float peak = 0;
     static float volume = 0;
     float max_sample = 0;
@@ -773,9 +784,10 @@ void DrawAudioPanel()
     //   )
     // );
 
-    size.y *= 0.7f;
-    size.x = 85;
+    size.y = 200;
+    size.x = 30;
 
+    ImGui::SameLine();
     DrawVolumeMeter("Audio Meter",
                     size,
                     volume,

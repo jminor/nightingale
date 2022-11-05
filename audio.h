@@ -4,7 +4,7 @@
 //extern ma_device_config deviceConfig;
 //extern ma_device device;
 
-extern float recent_data[1024];
+extern float recent_data[1024*2];
 
 bool setup_audio();
 bool load_audio_file(const char* path);
