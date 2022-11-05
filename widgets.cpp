@@ -61,34 +61,34 @@ bool KnobScalar(const char* label, ImGuiDataType data_type, void* p_data, float 
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(w, h));
     const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
 
+    const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
     ImGui::ItemSize(total_bb, style.FramePadding.y);
-    if (!ImGui::ItemAdd(total_bb, id, &frame_bb))
+    if (!ImGui::ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
         return false;
 
     // Default format string when passing NULL
     if (format == NULL)
         format = ImGui::DataTypeGetInfo(data_type)->PrintFmt;
 
-    // Tabbing or CTRL-clicking on Drag turns it into an InputText
     const bool hovered = ImGui::ItemHoverable(frame_bb, id);
-    const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
     bool temp_input_is_active = temp_input_allowed && ImGui::TempInputIsActive(id);
     if (!temp_input_is_active)
     {
-        const bool focus_requested = temp_input_allowed && ImGui::FocusableItemRegister(window, id);
+        // Tabbing or CTRL-clicking on Drag turns it into an InputText
+        const bool input_requested_by_tabbing = temp_input_allowed && (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_FocusedByTabbing) != 0;
         const bool clicked = (hovered && g.IO.MouseClicked[0]);
-        const bool double_clicked = (hovered && g.IO.MouseDoubleClicked[0]);
-        if (focus_requested || clicked || double_clicked || g.NavActivateId == id || g.NavInputId == id)
+        const bool double_clicked = (hovered && g.IO.MouseClickedCount[0] == 2);
+        const bool make_active = (input_requested_by_tabbing || clicked || double_clicked || g.NavActivateId == id || g.NavActivateInputId == id);
+        if (make_active && temp_input_allowed)
+            if (input_requested_by_tabbing || (clicked && g.IO.KeyCtrl) || double_clicked || g.NavActivateInputId == id)
+                temp_input_is_active = true;
+
+        if (make_active && !temp_input_is_active)
         {
             ImGui::SetActiveID(id, window);
             ImGui::SetFocusID(id, window);
             ImGui::FocusWindow(window);
             g.ActiveIdUsingNavDirMask = (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
-            if (temp_input_allowed && (focus_requested || (clicked && g.IO.KeyCtrl) || double_clicked || g.NavInputId == id))
-            {
-                temp_input_is_active = true;
-                ImGui::FocusableItemUnregister(window);
-            }
         }
     }
 
