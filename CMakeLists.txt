@@ -15,11 +15,14 @@ include(imgui.cmake)
 target_sources(nightingale
   PUBLIC
     main_glfw.cpp
+
     app.cpp
     audio.cpp
+    widgets.cpp
 
     app.h
     audio.h
+    widgets.h
     miniaudio.h
     embedded_font_ShareTechMono.inc
     embedded_font_fontawesome.inc
