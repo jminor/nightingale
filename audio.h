@@ -16,3 +16,4 @@ uint64_t num_samples();
 uint64_t current_sample_position();
 bool seek_audio(uint64_t targetFrame);
 void tear_down_audio();
+void set_volume(float vol);

@@ -683,7 +683,7 @@ void DrawAudioPanel()
     ImGui::SameLine();
 
     if (KnobFloat("VOL", &appState.volume, 0.005f, 0.0f, 1.0f, "%.2f")) {
-        //    appState.audio.setVolume(appState.audio_handle, appState.volume);
+        set_volume(appState.volume);
     }
 
     if (appState.playing) {
