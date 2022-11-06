@@ -12,6 +12,7 @@ ma_context context;
 ma_device_config deviceConfig;
 ma_device device;
 ma_decoder decoder;
+ma_node_graph_config nodeGraphConfig;
 
 int recent_data_index = 0;
 float recent_data[1024*2];
@@ -63,17 +64,18 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
         return;
     }
 
-    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount);
+    ma_uint64 framesRead=0;
+    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, &framesRead);
 
     float* source = (float*)pOutput;
     int frame_size = sizeof(float);
-    int frames_to_copy = frameCount;
-    int frames_copied = 0;
-    int max_frames = sizeof(recent_data)/frame_size;
+    ma_uint64 frames_to_copy = framesRead;
+    ma_uint64 frames_copied = 0;
+    ma_uint64 max_frames = sizeof(recent_data) / frame_size;
 
     while (frames_to_copy > 0) {
-        int frames_free = max_frames - recent_data_index;
-        int chunk_size = MIN(frames_free, frames_to_copy);
+        ma_uint64 frames_free = max_frames - recent_data_index;
+        ma_uint64 chunk_size = MIN(frames_free, frames_to_copy);
         memcpy(&recent_data[recent_data_index], &source[frames_copied], chunk_size * frame_size);
         frames_to_copy -= chunk_size;
         recent_data_index += chunk_size;
@@ -107,7 +109,11 @@ bool load_audio_file(const char* path)
         return false;
     }
 
-    __num_samples = ma_decoder_get_length_in_pcm_frames(&decoder);
+    if (ma_decoder_get_length_in_pcm_frames(&decoder, &__num_samples) != MA_SUCCESS) {
+        printf("Failed to determine audio file duration.\n");
+        ma_decoder_uninit(&decoder);
+        return false;
+    }
 
     return true;
 }
