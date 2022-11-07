@@ -170,15 +170,27 @@ void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 
 bool load_audio_file(const char* path)
 {
-    ma_decoder_uninit(&decoder);
+    ma_result result = ma_decoder_uninit(&decoder);
+    if (result != MA_SUCCESS) {
+        printf("Warning: Un-init decoder failed?\n");
+    }
 
     __num_samples = 0;
+
+    ma_node_detach_full(&dataSourceNode);
+    if (result != MA_SUCCESS) {
+        printf("Warning: Detatch failed?\n");
+    }
+    ma_data_source_uninit(&dataSourceNode);
+    if (result != MA_SUCCESS) {
+        printf("Warning: Un-init data source failed?\n");
+    }
 
     ma_decoder_config decoderConfig = ma_decoder_config_init(deviceConfig.playback.format,
                                                       deviceConfig.playback.channels,
                                                       deviceConfig.sampleRate);
 //    ma_decoder_config decoderConfig = ma_decoder_config_init_default();
-    ma_result result = ma_decoder_init_file(path, &decoderConfig, &decoder);
+    result = ma_decoder_init_file(path, &decoderConfig, &decoder);
     if (result != MA_SUCCESS) {
         printf("Could not load file: %s\n", path);
         return false;
