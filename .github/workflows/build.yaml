@@ -60,6 +60,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
+        git submodule init
+        git submodule update
         sudo apt-get update
         sudo apt-get install -y libglfw3-dev gcc-multilib g++-multilib libfreetype6-dev libasound2-dev
 
@@ -73,6 +75,7 @@ jobs:
     - name: Check Product
       run: |
         cd build
+        ls -l
         ls -l nightingale
         file nightingale
 
@@ -130,7 +133,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        brew install glfw3
+        git submodule init
+        git submodule update
 
     - name: Build
       run: |
@@ -142,6 +146,7 @@ jobs:
     - name: Check Product
       run: |
         cd build
+        ls -l
         ls -l nightingale
         file nightingale
 
@@ -149,7 +154,7 @@ jobs:
       run: |
         cd build
         chmod +x nightingale
-        zip -r nightingale-mac.zip nightingale fonts
+        zip -r nightingale-mac.zip nightingale
 
     - name: Archive Product
       uses: actions/upload-artifact@v1
