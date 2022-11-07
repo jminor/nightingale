@@ -207,8 +207,9 @@ void MainInit(int argc, char** argv)
     setup_audio();
 
     if (argc > 1) {
-        LoadAudio(argv[1]);
-        Play();
+        if (LoadAudio(argv[1])) {
+            Play();
+        }
     }
 }
 
@@ -358,28 +359,7 @@ float limit(float t, float small, float big)
 
 void AppUpdate()
 {
-    // bool was_playing = appState.playing;
-    // appState.playing = appState.audio_handle && !appState.audio.getPause(appState.audio_handle);
-
     appState.playhead = (double)current_sample_position() / (double)sample_rate();
-
-    // if (appState.audio_handle && appState.audio.isValidVoiceHandle(appState.audio_handle)) {
-    //   appState.playhead = appState.audio.getStreamTime(appState.audio_handle);
-    //   appState.playhead = fmodf(appState.playhead, LengthInSeconds());
-    // }else{
-    //   appState.audio_handle = 0;
-    //   appState.playhead = 0.0;
-    //   if (was_playing && !appState.playing) {
-    //     if (appState.loop) {
-    //       Play();
-    //     }else{
-    //       NextTrack();
-    //     }
-    //   }
-    // }
-    // if (appState.playing) {
-    //   appState.selection_start = DataLen() * appState.playhead / LengthInSeconds();
-    // }
 }
 
 static char buffer[256];
@@ -548,9 +528,9 @@ void DrawButtons(ImVec2 button_size)
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    if (IconButton("\uF048##Prev", button_size)) {
-        PrevTrack();
-    }
+//    if (IconButton("\uF048##Prev", button_size)) {
+//        PrevTrack();
+//    }
 
     ImGui::SameLine();
     // toggle
@@ -569,10 +549,10 @@ void DrawButtons(ImVec2 button_size)
         Stop();
     }
 
-    ImGui::SameLine();
-    if (IconButton("\uF051##Next", button_size)) {
-        NextTrack();
-    }
+//    ImGui::SameLine();
+//    if (IconButton("\uF051##Next", button_size)) {
+//        NextTrack();
+//    }
 
   ImGui::SameLine();
   ImGui::PushStyleVar(
@@ -585,7 +565,7 @@ void DrawButtons(ImVec2 button_size)
     );
   if (IconButton("\uF021##Loop", button_size)) {
     appState.loop = !appState.loop;
-//    appState.audio.setLooping(appState.audio_handle, appState.loop);
+      audio_set_looping(appState.loop);
   }
   ImGui::PopStyleColor();
   ImGui::PopStyleVar();
@@ -615,7 +595,7 @@ void DrawButtons(ImVec2 button_size)
     // }
     // ImGui::SameLine();
 
-    if (IconButton("\uF013#Demo", button_size)) {
+    if (IconButton("\uF013##Demo", button_size)) {
         appState.show_demo_window = !appState.show_demo_window;
     }
 }

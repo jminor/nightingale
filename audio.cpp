@@ -230,6 +230,7 @@ bool load_audio_file(const char* path)
         return false;
     }
 
+
     result = ma_node_attach_output_bus(&dataSourceNode, 0, ma_node_graph_get_endpoint(&nodeGraph), 0);
     if (result != MA_SUCCESS) {
         printf("Failed to attach node.\n");
@@ -296,6 +297,37 @@ const char *audio_format_str()
     }
 }
 
+const char *audio_state_str()
+{
+    switch (ma_device_get_state(&device)) {
+        case ma_device_state_starting:
+            return "starting";
+        case ma_device_state_started:
+            return "started";
+        case ma_device_state_stopping:
+            return "stopping";
+        case ma_device_state_stopped:
+            return "stopped";
+        case ma_device_state_uninitialized:
+            return "uninitialized";
+        default:
+            return "?";
+    }
+}
+
+bool audio_looping()
+{
+    return ma_data_source_node_is_looping(&dataSourceNode);
+}
+
+void audio_set_looping(bool loop)
+{
+    ma_result result = ma_data_source_node_set_looping(&dataSourceNode, loop);
+    if (result != MA_SUCCESS) {
+        printf("Unable to set looping mode.\n");
+    }
+}
+
 uint64_t current_sample_position()
 {
     ma_uint64 cursor;
@@ -310,6 +342,7 @@ uint64_t current_sample_position()
 
 bool seek_audio(uint64_t targetFrame)
 {
+    if (targetFrame >= __num_samples) targetFrame = __num_samples-1;
     printf("seek %lld\n", targetFrame);
     ma_result result = ma_decoder_seek_to_pcm_frame(&decoder, targetFrame);
     if (result != MA_SUCCESS) {
