@@ -8,6 +8,8 @@
 
 #include "audio.h"
 #include "widgets.h"
+#include "editor.h"
+
 #include "embedded_font_ShareTechMono.inc"
 #include "embedded_font_fontawesome.inc"
 
@@ -475,6 +477,12 @@ bool MainGui()
             if (ImGui::BeginTabItem("Audio"))
             {
                 DrawAudioPanel();
+
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Graph"))
+            {
+                GraphEditor();
 
                 ImGui::EndTabItem();
             }

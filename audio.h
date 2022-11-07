@@ -19,3 +19,4 @@ int fft_size();
 float *calc_fft();
 bool audio_looping();
 void audio_set_looping(bool loop);
+ma_node_graph* node_graph();

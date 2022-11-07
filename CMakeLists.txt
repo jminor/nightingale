@@ -18,10 +18,12 @@ target_sources(nightingale
 
     app.cpp
     audio.cpp
+    editor.cpp
     widgets.cpp
 
     app.h
     audio.h
+    editor.h
     widgets.h
     miniaudio.h
     embedded_font_ShareTechMono.inc
@@ -35,6 +37,19 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/libs/nativefiledialog/src/include
 )
 
+# add_subdirectory("libs/imnodes")
+add_library(imnodes STATIC)
+set_property(TARGET imnodes PROPERTY CXX_STANDARD 14)
+target_sources(imnodes PRIVATE
+        libs/imnodes/imnodes.h
+        libs/imnodes/imnodes_internal.h
+        libs/imnodes/imnodes.cpp)
+target_include_directories(imnodes PUBLIC
+    ${CMAKE_SOURCE_DIR}
+    ${IMGUI_DIR}
+    ${CMAKE_SOURCE_DIR}/libs/imnodes/)
+#target_link_libraries(imnodes PUBLIC imgui::imgui)
+
 set_target_properties(nightingale PROPERTIES COMPILE_FLAGS "-DIMGUI_IMPL_OPENGL_LOADER_GL3W")
 
 find_package(OpenGL REQUIRED)
@@ -47,6 +62,7 @@ target_compile_definitions(nightingale
 
 target_link_libraries(nightingale
     imgui
+    imnodes
     nativefiledialog
     glfw)
 

@@ -357,3 +357,8 @@ void set_volume(float vol)
 //    ma_node_set_output_bus_volume(&dataSourceNode, 0, vol);
     ma_node_set_output_bus_volume(ma_node_graph_get_endpoint(&nodeGraph), 0, vol);
 }
+
+ma_node_graph* node_graph()
+{
+    return &nodeGraph;
+}
