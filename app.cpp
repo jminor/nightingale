@@ -271,14 +271,6 @@ void Seek(float time)
     int targetFrame = time * sample_rate();
     seek_audio(targetFrame);
     appState.playhead = time;
-    // if (appState.audio_handle) {
-    //   appState.audio.setPause(appState.audio_handle, true);
-    // }else{
-    //   appState.audio_handle = appState.audio.play(*appState.source, appState.volume, 0.0f, true);
-    //   appState.audio.setLooping(appState.audio_handle, appState.loop);
-    // }
-    // appState.audio.seek(appState.audio_handle, appState.playhead);
-    // appState.selection_start = DataLen() * (appState.playhead / LengthInSeconds());
 }
 
 bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))

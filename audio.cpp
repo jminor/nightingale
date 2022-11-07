@@ -12,9 +12,9 @@ ma_context context;
 ma_device_config deviceConfig;
 ma_device device;
 ma_decoder decoder;
+ma_data_source_node dataSourceNode;
 ma_node_graph_config nodeGraphConfig;
 ma_node_graph nodeGraph;
-ma_data_source_node dataSourceNode;
 
 int recent_data_index = 0;
 float recent_data[1024*2];
@@ -39,26 +39,10 @@ bool setup_audio()
         return false;
     }
 
-    // Loop over each device info and do something with it. Here we just print the name with their index. You may want
-    // to give the user the opportunity to choose which device they'd prefer.
+    // Loop over each device info and do something with it. Here we just print the name with their index.
+    printf("Available Audio Devices:\n");
     for (ma_uint32 iDevice = 0; iDevice < playbackCount; iDevice += 1) {
-        printf("Audio Device #%d: %s\n", iDevice, pPlaybackInfos[iDevice].name);
-    }
-
-//    ma_device_config config = ma_device_config_init(ma_device_type_playback);
-//    config.playback.pDeviceID = &pPlaybackInfos[chosenPlaybackDeviceIndex].id;
-//    config.playback.format    = MY_FORMAT;
-//    config.playback.channels  = MY_CHANNEL_COUNT;
-//    config.sampleRate         = MY_SAMPLE_RATE;
-//    config.dataCallback       = data_callback;
-//    config.pUserData          = pMyCustomData;
-
-    nodeGraphConfig = ma_node_graph_config_init(2);
-
-    ma_result result = ma_node_graph_init(&nodeGraphConfig, NULL, &nodeGraph);
-    if (result != MA_SUCCESS) {
-        printf("Failed to initialize audio node graph.\n");
-        return false;
+        printf("  #%d: %s\n", iDevice, pPlaybackInfos[iDevice].name);
     }
 
     deviceConfig = ma_device_config_init(ma_device_type_playback);
@@ -66,6 +50,13 @@ bool setup_audio()
     deviceConfig.playback.channels = 2;
     deviceConfig.sampleRate        = 48000;
     deviceConfig.dataCallback      = data_callback;
+
+    nodeGraphConfig = ma_node_graph_config_init(deviceConfig.playback.channels);
+    ma_result result = ma_node_graph_init(&nodeGraphConfig, NULL, &nodeGraph);
+    if (result != MA_SUCCESS) {
+        printf("Failed to initialize audio node graph.\n");
+        return false;
+    }
     deviceConfig.pUserData         = &nodeGraph;
 
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
@@ -73,26 +64,26 @@ bool setup_audio()
         return false;
     }
 
+    char name[MA_MAX_DEVICE_NAME_LENGTH+1];
+    if (ma_device_get_name(&device, ma_device_type_playback, name, sizeof(name), NULL) != MA_SUCCESS) {
+        printf("Failed to get playback device name.\n");
+        return false;
+    }
+    printf("Selected Audio Device: %s\n", name);
+
     return true;
 }
 
 void tear_down_audio()
 {
-    ma_device_uninit(&device);
+    ma_device_stop(&device);
     ma_decoder_uninit(&decoder);
-//    ma_context_uninit(&context);
+    ma_device_uninit(&device);
+    ma_context_uninit(&context);
 }
 
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
 {
-//    ma_decoder* pDecoder = (ma_decoder*)pDevice->pUserData;
-//    if (pDecoder == NULL) {
-//        return;
-//    }
-//
-//    ma_uint64 framesRead=0;
-//    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, &framesRead);
-
     ma_uint64 framesRead;
     ma_result result = ma_node_graph_read_pcm_frames(&nodeGraph, pOutput, frameCount, &framesRead);
     if (result != MA_SUCCESS) {
@@ -122,10 +113,35 @@ bool load_audio_file(const char* path)
 {
     ma_decoder_uninit(&decoder);
 
-    ma_result result = ma_decoder_init_file(path, NULL, &decoder);
+    __num_samples = 0;
+
+    ma_decoder_config decoderConfig = ma_decoder_config_init(deviceConfig.playback.format,
+                                                      deviceConfig.playback.channels,
+                                                      deviceConfig.sampleRate);
+//    ma_decoder_config decoderConfig = ma_decoder_config_init_default();
+    ma_result result = ma_decoder_init_file(path, &decoderConfig, &decoder);
     if (result != MA_SUCCESS) {
         printf("Could not load file: %s\n", path);
         return false;
+    }
+
+    ma_format format;
+    ma_uint32 num_channels;
+    ma_uint32 sample_rate;
+    if (ma_decoder_get_data_format(&decoder, &format, &num_channels, &sample_rate, NULL, 0) != MA_SUCCESS) {
+        printf("Failed to determine audio file format.\n");
+        ma_decoder_uninit(&decoder);
+        return false;
+    }
+
+    if (format != deviceConfig.playback.format) {
+        printf("Audio file format mismatch %d != %d.\n", format, deviceConfig.playback.format);
+    }
+    if (num_channels != deviceConfig.playback.channels) {
+        printf("Audio file channels mismatch %d != %d.\n", num_channels, deviceConfig.playback.channels);
+    }
+    if (sample_rate != deviceConfig.sampleRate) {
+        printf("Audio file sample rate mismatch %d != %d.\n", sample_rate, deviceConfig.sampleRate);
     }
 
     if (ma_decoder_get_length_in_pcm_frames(&decoder, &__num_samples) != MA_SUCCESS) {
@@ -134,9 +150,9 @@ bool load_audio_file(const char* path)
         return false;
     }
 
-    ma_data_source_node_config config = ma_data_source_node_config_init(&decoder);
+    ma_data_source_node_config nodeConfig = ma_data_source_node_config_init(&decoder);
 
-    result = ma_data_source_node_init(&nodeGraph, &config, NULL, &dataSourceNode);
+    result = ma_data_source_node_init(&nodeGraph, &nodeConfig, NULL, &dataSourceNode);
     if (result != MA_SUCCESS) {
         printf("Failed to create data source node.\n");
         ma_decoder_uninit(&decoder);
@@ -179,7 +195,6 @@ bool stop_audio()
 uint32_t sample_rate()
 {
     return deviceConfig.sampleRate;
-//    return decoder.outputSampleRate;
 }
 
 int num_channels()
@@ -198,7 +213,7 @@ uint64_t current_sample_position()
 
     ma_result result = ma_decoder_get_cursor_in_pcm_frames(&decoder, &cursor);
     if (result != MA_SUCCESS) {
-        return 0;   // An error occurred.
+        return 0;
     }
 
     return cursor;
@@ -209,7 +224,7 @@ bool seek_audio(uint64_t targetFrame)
     printf("seek %lld\n", targetFrame);
     ma_result result = ma_decoder_seek_to_pcm_frame(&decoder, targetFrame);
     if (result != MA_SUCCESS) {
-        return false;   // An error occurred.
+        return false;
     }
 
     return true;
