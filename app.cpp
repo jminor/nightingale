@@ -10,9 +10,8 @@
 #include "widgets.h"
 #include "embedded_font_ShareTechMono.inc"
 #include "embedded_font_fontawesome.inc"
-// #include "imguihelper.h"
-// #include "imgui_plot.h"
-// #include "imguifilesystem.h"
+
+#include "nfd.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -519,6 +518,31 @@ bool MainGui()
     return true;
 }
 
+char* OpenFileDialog(const char* file_types) {
+    nfdchar_t *outPath = NULL;
+    nfdresult_t result = NFD_OpenDialog(file_types, NULL, &outPath);
+    if (result == NFD_OKAY) {
+        return outPath;
+    } else if (result == NFD_CANCEL) {
+        return strdup("");
+    } else {
+        Message("Error: %s\n", NFD_GetError());
+    }
+    return strdup("");
+}
+
+char* SaveFileDialog(const char* file_types) {
+    nfdchar_t *outPath = NULL;
+    nfdresult_t result = NFD_SaveDialog(file_types, NULL, &outPath);
+    if (result == NFD_OKAY) {
+        return outPath;
+    } else if (result == NFD_CANCEL) {
+        return strdup("");
+    } else {
+        Message("Error: %s\n", NFD_GetError());
+    }
+    return strdup("");
+}
 
 void DrawButtons(ImVec2 button_size)
 {
@@ -568,19 +592,17 @@ void DrawButtons(ImVec2 button_size)
 
     ImGui::SameLine();
 
-    const bool browseButtonPressed = IconButton("\uF07C##Load", button_size);                          // we need a trigger boolean variable
-    // static ImGuiFs::Dialog dlg;
-    // const char* chosenPath = dlg.chooseFileDialog(
-    //   browseButtonPressed,
-    //   dlg.getLastDirectory(),
-    //   // ".wav;.669;.abc;.amf;.ams;.dbm;.dmf;.dsm;.far;.it;.j2b;.mdl;.med;.mid;.mod;.mt2;.mtm;.okt;.pat;.psm;.ptm;.s3m;.stm;.ult;.umx;.xm",
-    //   ".wav;.mp3;.flac",
-    //   "Load Audio File (wav, mp3, flac)"
-    // );
-    // if (strlen(chosenPath)>0) {
-    //   LoadAudio(chosenPath);
-    //   QueueFolder(dlg.getLastDirectory());
-    // }
+    if (IconButton("\uF07C##Load", button_size)) {
+        Stop();
+        char* chosenPath = OpenFileDialog("wav,mp3,flac");
+        if (strlen(chosenPath) > 0) {
+            if (LoadAudio(chosenPath)) {
+                Play();
+            }
+//            QueueFolder(dlg.getLastDirectory());
+        }
+        free(chosenPath);
+    }
     ImGui::SameLine();
 
     // if (IconButton("\uF074##NodeGraph", button_size)) {

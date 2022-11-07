@@ -30,10 +30,11 @@ target_sources(nightingale
   PRIVATE
     libs/gl3w/GL/gl3w.c)
 
-# add_subdirectory("libs")
-# include_directories(
-#   ${PROJECT_SOURCE_DIR}/libs/nativefiledialog/src/include
-# )
+add_subdirectory("libs")
+include_directories(
+  ${PROJECT_SOURCE_DIR}/libs/nativefiledialog/src/include
+)
+
 set_target_properties(nightingale PROPERTIES COMPILE_FLAGS "-DIMGUI_IMPL_OPENGL_LOADER_GL3W")
 
 find_package(OpenGL REQUIRED)
@@ -46,6 +47,7 @@ target_compile_definitions(nightingale
 
 target_link_libraries(nightingale
     imgui
+    nativefiledialog
     glfw)
 
 if (APPLE)
