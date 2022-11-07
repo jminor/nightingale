@@ -31,7 +31,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-      submodules: true
+      with:
+        submodules: true
 
     - name: Install Linux Dependencies
       if: matrix.os == 'ubuntu-latest'
