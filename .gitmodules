@@ -1,0 +1,3 @@
+[submodule "libs/pffft"]
+	path = libs/pffft
+	url = https://bitbucket.org/jpommier/pffft.git

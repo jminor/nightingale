@@ -21,7 +21,8 @@ struct AppState
     bool loop = false;
     uint32_t selection_start = 0;
     uint32_t selection_length = 1000;
-    uint32_t wav_len = 2048;
+    uint32_t wav_len = 1024;
+    uint32_t fft_len = 256;
 
     char message[1024];
     
