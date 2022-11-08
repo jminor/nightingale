@@ -82,7 +82,10 @@ int DrawNode(ma_node* node)
 
     ImNodes::BeginNode(my_id);
 
-    ImGui::Text("State: %s", ma_node_get_state(node) == ma_node_state_started ? "started" : "stopped");
+    bool running = ma_node_get_state(node) == ma_node_state_started;
+    if (ImGui::Checkbox("Active", &running)) {
+        ma_node_set_state(node, running ? ma_node_state_started : ma_node_state_stopped);
+    }
 
     float time = ma_node_get_time(node);
     ImGui::DragFloat("Time", &time);
