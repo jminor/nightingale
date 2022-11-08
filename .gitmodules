@@ -4,6 +4,6 @@
 [submodule "libs/nativefiledialog"]
 	path = libs/nativefiledialog
 	url = https://github.com/mlabbe/nativefiledialog.git
-[submodule "libs/imnodes"]
-	path = libs/imnodes
-	url = https://github.com/Nelarius/imnodes.git
+[submodule "libs/imgui-node-editor"]
+	path = libs/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor.git

@@ -37,24 +37,37 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/libs/nativefiledialog/src/include
 )
 
-# add_subdirectory("libs/imnodes")
-add_library(imnodes STATIC)
-set_property(TARGET imnodes PROPERTY CXX_STANDARD 14)
-target_sources(imnodes PRIVATE
-        libs/imnodes/imnodes.h
-        libs/imnodes/imnodes_internal.h
-        libs/imnodes/imnodes.cpp)
-target_include_directories(imnodes PUBLIC
+add_library(imgui-node-editor STATIC)
+set_property(TARGET imgui-node-editor PROPERTY CXX_STANDARD 14)
+set(IMGUI_NODE_EDITOR_DIR libs/imgui-node-editor)
+target_sources(imgui-node-editor
+    PRIVATE
+        ${IMGUI_NODE_EDITOR_DIR}/crude_json.cpp
+#        ${IMGUI_NODE_EDITOR_DIR}/imgui_bezier_math.inl
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_canvas.cpp
+#        ${IMGUI_NODE_EDITOR_DIR}/imgui_extra_math.inl
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor.cpp
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_api.cpp
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_internal.h
+#        ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor_internal.inl
+    PUBLIC
+        ${IMGUI_NODE_EDITOR_DIR}/crude_json.h
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_bezier_math.h
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_canvas.h
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_extra_math.h
+        ${IMGUI_NODE_EDITOR_DIR}/imgui_node_editor.h
+        )
+target_include_directories(imgui-node-editor PUBLIC
     ${CMAKE_SOURCE_DIR}
     ${IMGUI_DIR}
-    ${CMAKE_SOURCE_DIR}/libs/imnodes/)
-#target_link_libraries(imnodes PUBLIC imgui::imgui)
+    ${IMGUI_NODE_EDITOR_DIR})
 
 set_target_properties(nightingale PROPERTIES COMPILE_FLAGS "-DIMGUI_IMPL_OPENGL_LOADER_GL3W")
 
 find_package(OpenGL REQUIRED)
 
-include_directories(
+target_include_directories(nightingale PUBLIC
+    ${IMGUI_NODE_EDITOR_DIR}
     libs/gl3w)
 
 target_compile_definitions(nightingale 
@@ -62,7 +75,7 @@ target_compile_definitions(nightingale
 
 target_link_libraries(nightingale
     imgui
-    imnodes
+    imgui-node-editor
     nativefiledialog
     glfw)
 
