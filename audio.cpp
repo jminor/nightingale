@@ -15,6 +15,13 @@ ma_decoder decoder;
 ma_data_source_node dataSourceNode;
 ma_node_graph_config nodeGraphConfig;
 ma_node_graph nodeGraph;
+std::set<ma_node*> __all_nodes;
+
+std::set<ma_node*>& all_nodes()
+{
+    return __all_nodes;
+}
+
 
 // a Pretty Fast Fast Fourier Transform library
 #include "libs/pffft/pffft.c"
@@ -102,6 +109,8 @@ bool setup_audio()
         printf("Failed to initialize audio node graph.\n");
         return false;
     }
+    __all_nodes.insert(ma_node_graph_get_endpoint(&nodeGraph));
+
     deviceConfig.pUserData         = &nodeGraph;
 
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
@@ -185,6 +194,7 @@ bool load_audio_file(const char* path)
     if (result != MA_SUCCESS) {
         printf("Warning: Un-init data source failed?\n");
     }
+    __all_nodes.erase(&dataSourceNode);
 
     ma_decoder_config decoderConfig = ma_decoder_config_init(deviceConfig.playback.format,
                                                       deviceConfig.playback.channels,
@@ -229,7 +239,7 @@ bool load_audio_file(const char* path)
         ma_decoder_uninit(&decoder);
         return false;
     }
-
+    __all_nodes.insert(&dataSourceNode);
 
     result = ma_node_attach_output_bus(&dataSourceNode, 0, ma_node_graph_get_endpoint(&nodeGraph), 0);
     if (result != MA_SUCCESS) {

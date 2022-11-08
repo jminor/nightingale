@@ -13,7 +13,9 @@ namespace NodeEditor = ax::NodeEditor;
 
 #include "audio.h"
 
-#include <map>
+#include <unordered_map>
+
+std::unordered_map<ma_node_input_bus*, std::pair<ma_node*, int>> input_bus_map;
 
 #define c89atomic_load_ptr(x) (x)
 #define MA_ASSERT(x)
@@ -87,13 +89,14 @@ NodeEditor::PinId DrawNode(ma_node* node)
     float time = ma_node_get_time(node);
     ImGui::DragFloat("Time", &time);
 
-    std::map<ma_node_input_bus*, ma_node*> more_nodes;
+    std::unordered_map<ma_node_input_bus*, ma_node_output_bus*> links;
 
     int input_bus_count = ma_node_get_input_bus_count(node);
     for (int bus_index = 0; bus_index < input_bus_count; bus_index++)
     {
         int input_channels = ma_node_get_input_channels(node, bus_index);
         ma_node_input_bus* input_bus = &node_base->pInputBuses[bus_index];
+        input_bus_map[input_bus] = std::pair<ma_node*, int>(node, bus_index);
 
         auto input_attr_id = (NodeEditor::PinId) input_bus;
         NodeEditor::BeginPin(input_attr_id, NodeEditor::PinKind::Input);
@@ -127,10 +130,7 @@ NodeEditor::PinId DrawNode(ma_node* node)
              output_bus != NULL;
              output_bus = (ma_node_output_bus*)c89atomic_load_ptr(output_bus->pNext))
         {
-            ma_node* another = output_bus->pNode;
-            if (another != nullptr) {
-                more_nodes[input_bus] = another;
-            }
+            links[input_bus] = output_bus;
         }
 
     }
@@ -167,14 +167,12 @@ NodeEditor::PinId DrawNode(ma_node* node)
 
     ImGui::PopItemWidth();
 
-    for (auto& pair : more_nodes) {
+    for (auto& pair : links) {
         const auto& input_attr_id = (NodeEditor::PinId) pair.first;
-        auto& another_node = pair.second;
+        const auto& output_pin_id = (NodeEditor::PinId) pair.second;
 
-        auto other_pin_id = DrawNode(another_node);
-
-        static int link_id = 0;
-        NodeEditor::Link(link_id++, other_pin_id, input_attr_id);
+        auto link_id = (NodeEditor::LinkId) output_pin_id.AsPointer();
+        NodeEditor::Link(link_id, output_pin_id, input_attr_id);
     }
 
     return output_attr_id;
@@ -200,8 +198,83 @@ void GraphEditor()
 
     ma_node_graph* graph = node_graph();
 
-    ma_node* node = ma_node_graph_get_endpoint(graph);
-    DrawNode(node);
+    input_bus_map.clear();
+
+    for (auto& node : all_nodes()) {
+        DrawNode(node);
+    }
+
+    if (NodeEditor::BeginCreate())
+    {
+        NodeEditor::PinId inputPinId, outputPinId;
+        if (NodeEditor::QueryNewLink(&inputPinId, &outputPinId))
+        {
+            // QueryNewLink returns true if editor want to create new link between pins.
+            //
+            // Link can be created only for two valid pins, it is up to you to
+            // validate if connection make sense. Editor is happy to make any.
+            //
+            // Link always goes from input to output. User may choose to drag
+            // link from output pin or input pin. This determine which pin ids
+            // are valid and which are not:
+            //   * input valid, output invalid - user started to drag new ling from input pin
+            //   * input invalid, output valid - user started to drag new ling from output pin
+            //   * input valid, output valid   - user dragged link over other pin, can be validated
+
+            if (inputPinId && outputPinId) // both are valid, let's accept link
+            {
+                // NodeEditor::AcceptNewItem() return true when user release mouse button.
+                if (NodeEditor::AcceptNewItem())
+                {
+                    ma_node_input_bus* input_bus = (ma_node_input_bus*)inputPinId.AsPointer();
+                    ma_node_output_bus* output_bus = (ma_node_output_bus*)outputPinId.AsPointer();
+
+                    auto& pair = input_bus_map[input_bus];
+
+                    if (pair.first == NULL) {
+                        // wired backwards, swap
+                        pair = input_bus_map[(ma_node_input_bus*)output_bus];
+                        output_bus = (ma_node_output_bus*)input_bus;
+                    }
+
+                    auto input_node = pair.first;
+                    auto input_bus_index = pair.second;
+
+                    ma_node_attach_output_bus(output_bus->pNode,
+                                              output_bus->outputBusIndex,
+                                              input_node,
+                                              input_bus_index);
+                }
+
+                // You may choose to reject connection between these nodes
+                // by calling NodeEditor::RejectNewItem(). This will allow editor to give
+                // visual feedback by changing link thickness and color.
+            }
+        }
+    }
+    NodeEditor::EndCreate(); // Wraps up object creation action handling.
+
+
+    // Handle deletion action
+    if (NodeEditor::BeginDelete())
+    {
+        // There may be many links marked for deletion, let's loop over them.
+        NodeEditor::LinkId deletedLinkId;
+        while (NodeEditor::QueryDeletedLink(&deletedLinkId))
+        {
+            // If you agree that link can be deleted, accept deletion.
+            if (NodeEditor::AcceptDeletedItem())
+            {
+                ma_node_output_bus* output_bus = (ma_node_output_bus*)deletedLinkId.AsPointer();
+                ma_node_detach_output_bus(output_bus->pNode, output_bus->outputBusIndex);
+            }
+
+            // You may reject link deletion by calling:
+            // NodeEditor::RejectDeletedItem();
+        }
+    }
+    NodeEditor::EndDelete(); // Wrap up deletion action
+
 
     NodeEditor::End();
 

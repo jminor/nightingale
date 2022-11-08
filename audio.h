@@ -1,4 +1,5 @@
 #include "miniaudio.h"
+#include <set>
 
 bool setup_audio();
 bool load_audio_file(const char* path);
@@ -20,3 +21,4 @@ float *calc_fft();
 bool audio_looping();
 void audio_set_looping(bool loop);
 ma_node_graph* node_graph();
+std::set<ma_node*>& all_nodes();
