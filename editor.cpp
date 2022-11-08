@@ -16,9 +16,62 @@
 #include <map>
 
 #define c89atomic_load_ptr(x) (x)
+#define MA_ASSERT(x)
 
 static int node_count = 0;
 static int attr_id = 0;
+
+
+static ma_uint32 ma_node_input_bus_get_channels(const ma_node_input_bus* pInputBus)
+{
+    return pInputBus->channels;
+}
+
+static float* ma_node_get_cached_input_ptr(ma_node* pNode, ma_uint32 inputBusIndex)
+{
+    ma_node_base* pNodeBase = (ma_node_base*)pNode;
+    ma_uint32 iInputBus;
+    float* pBasePtr;
+
+    MA_ASSERT(pNodeBase != NULL);
+
+    /* Input data is stored at the front of the buffer. */
+    pBasePtr = pNodeBase->pCachedData;
+    for (iInputBus = 0; iInputBus < inputBusIndex; iInputBus += 1) {
+        pBasePtr += pNodeBase->cachedDataCapInFramesPerBus * ma_node_input_bus_get_channels(&pNodeBase->pInputBuses[iInputBus]);
+    }
+
+    return pBasePtr;
+}
+
+static ma_uint32 ma_node_output_bus_get_channels(const ma_node_output_bus* pOutputBus)
+{
+    return pOutputBus->channels;
+}
+
+static float* ma_node_get_cached_output_ptr(ma_node* pNode, ma_uint32 outputBusIndex)
+{
+    ma_node_base* pNodeBase = (ma_node_base*)pNode;
+    ma_uint32 iInputBus;
+    ma_uint32 iOutputBus;
+    float* pBasePtr;
+
+    MA_ASSERT(pNodeBase != NULL);
+
+    /* Cached output data starts after the input data. */
+    pBasePtr = pNodeBase->pCachedData;
+    for (iInputBus = 0; iInputBus < ma_node_get_input_bus_count(pNodeBase); iInputBus += 1) {
+        pBasePtr += pNodeBase->cachedDataCapInFramesPerBus * ma_node_input_bus_get_channels(&pNodeBase->pInputBuses[iInputBus]);
+    }
+
+    for (iOutputBus = 0; iOutputBus < outputBusIndex; iOutputBus += 1) {
+        pBasePtr += pNodeBase->cachedDataCapInFramesPerBus * ma_node_output_bus_get_channels(&pNodeBase->pOutputBuses[iOutputBus]);
+    }
+
+    return pBasePtr;
+}
+
+
 
 int DrawNode(ma_node* node)
 {
@@ -41,7 +94,25 @@ int DrawNode(ma_node* node)
         int input_channels = ma_node_get_input_channels(node, bus_index);
         int input_attr_id = attr_id++;
         ImNodes::BeginInputAttribute(input_attr_id);
+
         ImGui::Text("IN %d: %d channels", bus_index, input_channels);
+
+        float *cache = ma_node_get_cached_input_ptr(node, bus_index);
+        int count = node_base->cachedDataCapInFramesPerBus;
+
+        if (cache != NULL && count > 0) {
+            ImGui::PlotLines(
+                             "##PCM",
+                             cache,
+                             count,
+                             0,    // values_offset
+                             nullptr, // overlay_text
+                             -1.0f, // scale_min
+                             1.0f, // scale_max
+                             ImVec2(80,40) // graph_size
+                             );
+        }
+
         ImNodes::EndInputAttribute();
 
         ma_node_input_bus* input_bus;
@@ -67,6 +138,20 @@ int DrawNode(ma_node* node)
     float volume = ma_node_get_output_bus_volume(node, 0);
     if (ImGui::DragFloat("OUT", &volume, 0.01, 0.0, 1.0)) {
         ma_node_set_output_bus_volume(node, 0, volume);
+    }
+    float *cache = ma_node_get_cached_output_ptr(node, 0);
+    int count = node_base->cachedFrameCountOut;
+    if (cache != NULL && count > 0) {
+        ImGui::PlotLines(
+                         "##OUT",
+                         cache,
+                         count,
+                         0,    // values_offset
+                         nullptr, // overlay_text
+                         -1.0f, // scale_min
+                         1.0f, // scale_max
+                         ImVec2(80,40) // graph_size
+                         );
     }
     ImNodes::EndOutputAttribute();
 
