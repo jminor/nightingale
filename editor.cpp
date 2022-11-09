@@ -173,6 +173,8 @@ NodeEditor::PinId DrawNode(ma_node* node)
 
         auto link_id = (NodeEditor::LinkId) output_pin_id.AsPointer();
         NodeEditor::Link(link_id, output_pin_id, input_attr_id);
+        // This *looks* cool, but causes crashes if you delete a node?!
+//        NodeEditor::Flow(link_id);
     }
 
     return output_attr_id;
@@ -186,10 +188,12 @@ void GraphEditor()
 {
     ImGui::Text("Graph Editor");
 
+    bool first_frame = false;
     if (__NodeEditor == NULL) {
         NodeEditor::Config config;
         config.SettingsFile = "Simple.json";
         __NodeEditor = NodeEditor::CreateEditor(&config);
+        first_frame = true;
     }
 
     NodeEditor::SetCurrentEditor(__NodeEditor);
@@ -277,6 +281,10 @@ void GraphEditor()
 
 
     NodeEditor::End();
+
+    if (first_frame) {
+        NodeEditor::NavigateToContent(0.0f);
+    }
 
     NodeEditor::SetCurrentEditor(NULL);
 }
