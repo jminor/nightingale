@@ -70,6 +70,10 @@ static float* ma_node_get_cached_output_ptr(ma_node* pNode, ma_uint32 outputBusI
     return pBasePtr;
 }
 
+static int link_id = 0;
+
+//static ma_node_vtable* g_ma_lpf_node_vtable;
+extern ma_node_vtable g_ma_lpf_node_vtable;
 
 
 NodeEditor::PinId DrawNode(ma_node* node)
@@ -81,13 +85,20 @@ NodeEditor::PinId DrawNode(ma_node* node)
 
     ImGui::PushItemWidth(80);
 
+    const char* title = "?";
+    
+    if (node_base->vtable == &g_ma_lpf_node_vtable ) {
+        title = "Low Pass Filter";
+    }
+    ImGui::Text("%s", title);
+
     bool running = ma_node_get_state(node) == ma_node_state_started;
     if (ImGui::Checkbox("Active", &running)) {
         ma_node_set_state(node, running ? ma_node_state_started : ma_node_state_stopped);
     }
 
     float time = ma_node_get_time(node);
-    ImGui::DragFloat("Time", &time);
+    ImGui::Text("Time: %d", (int)time);
 
     std::unordered_map<ma_node_input_bus*, ma_node_output_bus*> links;
 
@@ -101,6 +112,8 @@ NodeEditor::PinId DrawNode(ma_node* node)
         auto input_attr_id = (NodeEditor::PinId) input_bus;
         NodeEditor::BeginPin(input_attr_id, NodeEditor::PinKind::Input);
         ImGui::Text(">");
+//        NodeEditor::PinPivotRect(inputsRect.GetCenter(), inputsRect.GetCenter());
+//        NodeEditor::PinRect(inputsRect.GetTL(), inputsRect.GetBR());
         NodeEditor::EndPin();
 
         ImGui::SameLine();
@@ -130,7 +143,12 @@ NodeEditor::PinId DrawNode(ma_node* node)
              output_bus != NULL;
              output_bus = (ma_node_output_bus*)c89atomic_load_ptr(output_bus->pNext))
         {
-            links[input_bus] = output_bus;
+//            links[input_bus] = output_bus;
+            const auto& input_attr_id = (NodeEditor::PinId) input_bus;
+            const auto& output_pin_id = (NodeEditor::PinId) output_bus;
+
+            auto link_id = (NodeEditor::LinkId)((char*)output_pin_id.AsPointer() + 1);
+            NodeEditor::Link(link_id, output_pin_id, input_attr_id);
         }
 
     }
@@ -175,6 +193,7 @@ NodeEditor::PinId DrawNode(ma_node* node)
         NodeEditor::Link(link_id, output_pin_id, input_attr_id);
         // This *looks* cool, but causes crashes if you delete a node?!
 //        NodeEditor::Flow(link_id);
+//        link_id++;
     }
 
     return output_attr_id;
@@ -199,6 +218,8 @@ void GraphEditor()
     NodeEditor::SetCurrentEditor(__NodeEditor);
 
     NodeEditor::Begin("My Editor", ImVec2(0.0, 0.0f));
+
+    link_id = 0;
 
     ma_node_graph* graph = node_graph();
 
@@ -269,16 +290,147 @@ void GraphEditor()
             // If you agree that link can be deleted, accept deletion.
             if (NodeEditor::AcceptDeletedItem())
             {
-                ma_node_output_bus* output_bus = (ma_node_output_bus*)deletedLinkId.AsPointer();
+                ma_node_output_bus* output_bus = (ma_node_output_bus*)((char*)deletedLinkId.AsPointer() - 1);
                 ma_node_detach_output_bus(output_bus->pNode, output_bus->outputBusIndex);
             }
 
             // You may reject link deletion by calling:
             // NodeEditor::RejectDeletedItem();
         }
+
+        NodeEditor::NodeId deletedNodeId;
+        while (NodeEditor::QueryDeletedNode(&deletedNodeId))
+        {
+            if (NodeEditor::AcceptDeletedItem())
+            {
+                ma_node_base* node = (ma_node_base*)deletedNodeId.AsPointer();
+                ma_node_detach_all_output_buses(node);
+            }
+        }
     }
     NodeEditor::EndDelete(); // Wrap up deletion action
 
+
+    auto openPopupPosition = ImGui::GetMousePos();
+    static NodeEditor::NodeId contextNodeId      = 0;
+    static NodeEditor::LinkId contextLinkId      = 0;
+    static NodeEditor::PinId  contextPinId       = 0;
+    NodeEditor::Suspend();
+    if (NodeEditor::ShowNodeContextMenu(&contextNodeId))
+        ImGui::OpenPopup("Node Context Menu");
+    else if (NodeEditor::ShowPinContextMenu(&contextPinId))
+        ImGui::OpenPopup("Pin Context Menu");
+    else if (NodeEditor::ShowLinkContextMenu(&contextLinkId))
+        ImGui::OpenPopup("Link Context Menu");
+    else if (NodeEditor::ShowBackgroundContextMenu())
+    {
+        ImGui::OpenPopup("Create New Node");
+    }
+    NodeEditor::Resume();
+
+    NodeEditor::Suspend();
+    if (ImGui::BeginPopup("Node Context Menu"))
+    {
+        auto node = (ma_node_base*)contextNodeId.AsPointer();
+
+        ImGui::TextUnformatted("Node Context Menu");
+        ImGui::Separator();
+        if (node)
+        {
+            ImGui::Text("State: %s", node->state == ma_node_state_started ? "running" : "stopped");
+//            ImGui::Text("Type: %s", node->Type == NodeType::Blueprint ? "Blueprint" : (node->Type == NodeType::Tree ? "Tree" : "Comment"));
+            ImGui::Text("Inputs: %d", (int)node->inputBusCount);
+            ImGui::Text("Outputs: %d", (int)node->outputBusCount);
+        }
+        else {
+            ImGui::Text("Unknown node: %p", contextNodeId.AsPointer());
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("Delete")) {
+//            ma_node_detach_all_output_buses(node);
+            // or this:
+            NodeEditor::DeleteNode(contextNodeId);
+        }
+        ImGui::EndPopup();
+    }
+
+/*
+ if (ImGui::BeginPopup("Pin Context Menu"))
+    {
+        if (ImGui::MenuItem("Disconnect")) {
+            ...
+        }
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopup("Link Context Menu"))
+    {
+        auto link = FindLink(contextLinkId);
+        if (ImGui::MenuItem("Delete"))
+            NodeEditor::DeleteLink(contextLinkId);
+        ImGui::EndPopup();
+    }
+*/
+
+    if (ImGui::BeginPopup("Create New Node"))
+    {
+        auto newNodePostion = openPopupPosition;
+        //ImGui::SetCursorScreenPos(ImGui::GetMousePosOnOpeningCurrentPopup());
+
+//        auto drawList = ImGui::GetWindowDrawList();
+//        drawList->AddCircleFilled(ImGui::GetMousePosOnOpeningCurrentPopup(), 10.0f, 0xFFFF00FF);
+
+        ma_node* node = nullptr;
+        ma_result result;
+
+        if (ImGui::MenuItem("Low Pass Filter")) {
+            ma_lpf_node_config lpfNodeConfig =
+                ma_lpf_node_config_init(num_channels(),
+                                        sample_rate(),
+                                        sample_rate() / 80,
+                                        8);
+
+            node = new ma_lpf_node;
+            result = ma_lpf_node_init(node_graph(), &lpfNodeConfig, NULL, (ma_lpf_node*)node);
+            if (result != MA_SUCCESS) {
+                printf("ERROR: Failed to initialize low pass filter node.");
+            }
+        }
+
+        if (ImGui::MenuItem("Echo / Delay")) {
+            ma_delay_node_config delayNodeConfig =
+                ma_delay_node_config_init(num_channels(),
+                                          sample_rate(),
+                                          (ma_uint32)(sample_rate() * 0.2f),
+                                          0.5f);
+
+            node = new ma_delay_node;
+            result = ma_delay_node_init(node_graph(), &delayNodeConfig, NULL, (ma_delay_node*)node);
+            if (result != MA_SUCCESS) {
+                printf("ERROR: Failed to initialize delay node.");
+            }
+        }
+
+        if (ImGui::MenuItem("Splitter")) {
+            ma_splitter_node_config splitterNodeConfig = ma_splitter_node_config_init(num_channels());
+
+            node = new ma_splitter_node;
+            result = ma_splitter_node_init(node_graph(), &splitterNodeConfig, NULL, (ma_splitter_node*)node);
+            if (result != MA_SUCCESS) {
+                printf("ERROR: Failed to initialize splitter node.");
+                return -1;
+            }
+        }
+
+        if (node)
+        {
+            NodeEditor::SetNodePosition((NodeEditor::NodeId)node, newNodePostion);
+            all_nodes().insert(node);
+        }
+
+        ImGui::EndPopup();
+    }
+    NodeEditor::Resume();
 
     NodeEditor::End();
 
