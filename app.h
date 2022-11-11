@@ -33,8 +33,6 @@ struct AppState
 };
 
 extern AppState appState;
-extern ImFont *gTechFont;
-extern ImFont *gIconFont;
 
 void MainInit(int argc, char** argv);
 bool MainGui();

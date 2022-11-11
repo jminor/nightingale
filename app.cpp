@@ -10,8 +10,7 @@
 #include "widgets.h"
 #include "editor.h"
 
-#include "embedded_font_ShareTechMono.inc"
-#include "embedded_font_fontawesome.inc"
+#include "embedded_font.inc"
 
 #include "nfd.h"
 
@@ -37,8 +36,7 @@ static int min(int a, int b) {
 
 AppState appState;
 
-ImFont *gTechFont = nullptr;
-ImFont *gIconFont = nullptr;
+ImFont* gFont = nullptr;
 
 // Log a message to the terminal
 void Log(const char* format, ...)
@@ -61,21 +59,47 @@ void Message(const char* format, ...)
     Log(appState.message);
 }
 
-// Files in the application fonts/ folder are supposed to be embedded
-// automatically (on iOS/Android/Emscripten), but that's not wired up.
 void LoadFonts()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    //  gTechFont = io.Fonts->AddFontDefault();
-    //  gIconFont = gTechFont;
-    gTechFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
-                    ShareTechMono_compressed_data_base85,
-                    20.0f);
-    static const ImWchar icon_fa_ranges[] = { 0xF000, 0xF18B, 0 };
-    gIconFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
-                    fontawesome_compressed_data_base85,
-                    16.0f, NULL, icon_fa_ranges);
+    gFont = io.Fonts->AddFontFromMemoryCompressedBase85TTF(
+        ShureTechMono_compressed_data_base85,
+        20.0f);
+
+    static const ImWchar icon_fa_ranges[] = {
+        // 0x0000, 0x00FF, // ASCII
+        0xe5fa, 0xe631, // Seti-UI + Custom
+        0xe700, 0xe7c5, // Devicons
+        0xf000, 0xf2e0, // Font Awesome
+        0xe200, 0xe2a9, // Font Awesome Extension
+        0xf500, 0xfd46, // Material Design Icons
+        0xe300, 0xe3eb, // Weather
+        0xf400, 0xf4a9, // Octicons (1)
+        0x2665, 0x2665, // Octicons (2)
+        0x26A1, 0x26A1, // Octicons (3)
+        0xe0a0, 0xe0a2, // Powerline Symbols (1)
+        0xe0b0, 0xe0b3, // Powerline Symbols (2)
+        0xe0a3, 0xe0a3, // Powerline Extra Symbols (1)
+        0xe0b4, 0xe0c8, // Powerline Extra Symbols (2)
+        0xe0ca, 0xe0ca, // Powerline Extra Symbols (3)
+        0xe0cc, 0xe0d4, // Powerline Extra Symbols (4)
+        0x23fb, 0x23fe, //2b58 // IEC Power Symbols
+        0xf300, 0xf32d, // Font Logos
+        0xe000, 0xe00a, // Pomicons
+        0xea60, 0xebeb, // Codicons
+        0
+    };
+
+    ImFontConfig config;
+    config.MergeMode = true;
+    config.GlyphOffset.x = 1.0f;
+    config.GlyphOffset.y = 1.5f;
+    io.Fonts->AddFontFromMemoryCompressedBase85TTF(
+        ShureTechMono_compressed_data_base85,
+        30.0f,
+        &config,
+        icon_fa_ranges);
 }
 
 void Style_Mono()
@@ -275,11 +299,21 @@ void Seek(float time)
     appState.playhead = time;
 }
 
-bool IconButton(const char* label, const ImVec2 size=ImVec2(0,0))
+bool IconButton(const char* label, const ImVec2 size = ImVec2(0, 0))
 {
-    ImGui::PushFont(gIconFont);
+//    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
+//    ImGui::PushStyleColor(ImGuiCol_Button, 0);
     bool result = ImGui::Button(label, size);
-    ImGui::PopFont();
+//    ImGui::PopStyleColor();
+//    ImGui::PopStyleVar();
+
+/*
+    auto pos = ImGui::GetCursorPos();
+    bool result = ImGui::InvisibleButton(label, size);
+    ImGui::SetCursorPos(pos);
+    int len = strchr(label, '#') - label;
+    ImGui::Text("%.*s", len, label);
+*/
     return result;
 }
 

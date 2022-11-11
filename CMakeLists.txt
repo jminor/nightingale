@@ -26,8 +26,7 @@ target_sources(nightingale
     editor.h
     widgets.h
     miniaudio.h
-    embedded_font_ShareTechMono.inc
-    embedded_font_fontawesome.inc
+    embedded_font.inc
 
   PRIVATE
     libs/gl3w/GL/gl3w.c)
@@ -88,21 +87,11 @@ if (APPLE)
   target_link_libraries(nightingale ${OPENGL_LIBRARY})
 endif (APPLE)
 
-#set_source_files_properties(embedded_font_ShareTechMono.inc PROPERTIES GENERATED 1)
-#set_source_files_properties(embedded_font_fontawesome.inc PROPERTIES GENERATED 1)
-
 add_custom_command(
-    OUTPUT "${PROJECT_SOURCE_DIR}/embedded_font_ShareTechMono.inc"
-    COMMAND binary_to_compressed_c -base85 ${PROJECT_SOURCE_DIR}/fonts/ShareTechMono-Regular.ttf ShareTechMono > ${PROJECT_SOURCE_DIR}/embedded_font_ShareTechMono.inc
-    COMMENT "Embedding font: ShareTechMono-Regular.ttf"
-    MAIN_DEPENDENCY "fonts/ShareTechMono-Regular.ttf"
-    VERBATIM)
-
-add_custom_command(
-    OUTPUT "${PROJECT_SOURCE_DIR}/embedded_font_fontawesome.inc"
-    COMMAND binary_to_compressed_c -base85 ${PROJECT_SOURCE_DIR}/fonts/fontawesome-webfont.ttf fontawesome > ${PROJECT_SOURCE_DIR}/embedded_font_fontawesome.inc
-    COMMENT "Embedding font: fontawesome-webfont.ttf"
-    MAIN_DEPENDENCY "fonts/fontawesome-webfont.ttf"
+    OUTPUT "${PROJECT_SOURCE_DIR}/embedded_font.inc"
+    COMMAND binary_to_compressed_c -base85 "${PROJECT_SOURCE_DIR}/fonts/Shure Tech Mono Nerd Font Complete Mono.ttf" ShureTechMono > ${PROJECT_SOURCE_DIR}/embedded_font.inc
+    COMMENT "Embedding font..."
+    MAIN_DEPENDENCY "fonts/Shure Tech Mono Nerd Font Complete.ttf"
     VERBATIM)
 
 install(TARGETS nightingale

@@ -8,5 +8,4 @@ nightingale_emscripten.js
 nightingale_emscripten.wasm
 
 build
-embedded_font_ShareTechMono.inc
-embedded_font_fontawesome.inc
+embedded_font*.inc
