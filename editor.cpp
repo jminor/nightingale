@@ -72,8 +72,18 @@ static float* ma_node_get_cached_output_ptr(ma_node* pNode, ma_uint32 outputBusI
 
 static int link_id = 0;
 
-//static ma_node_vtable* g_ma_lpf_node_vtable;
 extern ma_node_vtable g_ma_lpf_node_vtable;
+extern ma_node_vtable g_ma_hpf_node_vtable;
+extern ma_node_vtable g_ma_bpf_node_vtable;
+extern ma_node_vtable g_ma_notch_node_vtable;
+extern ma_node_vtable g_ma_peak_node_vtable;
+extern ma_node_vtable g_ma_loshelf_node_vtable;
+extern ma_node_vtable g_ma_hishelf_node_vtable;
+extern ma_node_vtable g_ma_delay_node_vtable;
+extern ma_node_vtable g_node_graph_node_vtable;
+extern ma_node_vtable g_ma_data_source_node_vtable;
+extern ma_node_vtable g_ma_splitter_node_vtable;
+extern ma_node_vtable g_ma_biquad_node_vtable;
 
 
 NodeEditor::PinId DrawNode(ma_node* node)
@@ -85,20 +95,61 @@ NodeEditor::PinId DrawNode(ma_node* node)
 
     ImGui::PushItemWidth(80);
 
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
+    ImGui::PushStyleColor(ImGuiCol_Button, 0);
+    bool running = ma_node_get_state(node) == ma_node_state_started;
+    if (ImGui::Button(running ? "\uEBB4" : "\uEBB5", ImVec2(0,0))) { //}, ImVec2(20,20))) {
+        ma_node_set_state(node, !running ? ma_node_state_started : ma_node_state_stopped);
+    }
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
+
+    ImGui::SameLine();
+
     const char* title = "?";
-    
-    if (node_base->vtable == &g_ma_lpf_node_vtable ) {
-        title = "Low Pass Filter";
+    if (node_base->vtable == &g_ma_lpf_node_vtable) {
+        title = "lpf";
+    }
+    if (node_base->vtable == &g_ma_hpf_node_vtable) {
+        title = "hpf";
+    }
+    if (node_base->vtable == &g_ma_bpf_node_vtable) {
+        title = "bpf";
+    }
+    if (node_base->vtable == &g_ma_notch_node_vtable) {
+        title = "notch";
+    }
+    if (node_base->vtable == &g_ma_peak_node_vtable) {
+        title = "peak";
+    }
+    if (node_base->vtable == &g_ma_loshelf_node_vtable) {
+        title = "loshelf";
+    }
+    if (node_base->vtable == &g_ma_hishelf_node_vtable) {
+        title = "hishelf";
+    }
+    if (node_base->vtable == &g_ma_delay_node_vtable) {
+        title = "delay";
+    }
+    if (node_base->vtable == &g_node_graph_node_vtable) {
+        title = "node_graph";
+    }
+    if (node_base->vtable == &g_ma_data_source_node_vtable) {
+        title = "data_source";
+    }
+    if (node_base->vtable == &g_ma_splitter_node_vtable) {
+        title = "splitter";
+    }
+    if (node_base->vtable == &g_ma_biquad_node_vtable) {
+        title = "biquad";
+    }
+    if (node_base == ma_node_graph_get_endpoint(node_graph())) {
+        title = "OUTPUT";
     }
     ImGui::Text("%s", title);
 
-    bool running = ma_node_get_state(node) == ma_node_state_started;
-    if (ImGui::Checkbox("Active", &running)) {
-        ma_node_set_state(node, running ? ma_node_state_started : ma_node_state_stopped);
-    }
-
-    float time = ma_node_get_time(node);
-    ImGui::Text("Time: %d", (int)time);
+//    float time = ma_node_get_time(node);
+//    ImGui::Text("Time: %d", (int)time);
 
     std::unordered_map<ma_node_input_bus*, ma_node_output_bus*> links;
 
@@ -216,6 +267,10 @@ void GraphEditor()
     }
 
     NodeEditor::SetCurrentEditor(__NodeEditor);
+
+    auto style = ImGui::GetStyle();
+    NodeEditor::PushStyleVar(NodeEditor::StyleVar_NodeRounding, 5);
+    NodeEditor::PushStyleColor(NodeEditor::StyleColor_NodeBorder, style.Colors[ImGuiCol_Border]);
 
     NodeEditor::Begin("My Editor", ImVec2(0.0, 0.0f));
 
@@ -433,6 +488,9 @@ void GraphEditor()
     NodeEditor::Resume();
 
     NodeEditor::End();
+
+    NodeEditor::PopStyleVar();
+    NodeEditor::PopStyleColor();
 
     if (first_frame) {
         NodeEditor::NavigateToContent(0.0f);
