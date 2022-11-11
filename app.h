@@ -1,8 +1,8 @@
 
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
 // #include "imguihelper.h"
 // #include "imgui_plot.h"
@@ -10,11 +10,10 @@
 #include "imgui_internal.h"
 
 // Struct that holds the application's state
-struct AppState
-{
+struct AppState {
     char file_path[PATH_MAX];
     char queue_folder[PATH_MAX];
-    
+
     bool playing = false;
     float volume = 1.0f;
     float playhead = 0.0f;
@@ -25,7 +24,7 @@ struct AppState
     uint32_t fft_len = 256;
 
     char message[1024];
-    
+
     bool show_main_window = true;
     bool mini_mode = false;
     bool show_style_editor = false;
@@ -37,5 +36,3 @@ extern AppState appState;
 void MainInit(int argc, char** argv);
 bool MainGui();
 void MainCleanup();
-
-
